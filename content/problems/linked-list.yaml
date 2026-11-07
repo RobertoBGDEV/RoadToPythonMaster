@@ -170,7 +170,7 @@
     - {args: [[1, 2]], expected: [1, 2], hidden: true}
     - {args: [[1, 2, 3]], expected: [1, 3, 2], hidden: true}
   hints:
-    - Combine three techniques: find the middle, reverse the second half, then weave the two halves.
+    - "Combine three techniques: find the middle, reverse the second half, then weave the two halves."
   solution: |
     def reorder_list(head):
         if not head or not head.next:

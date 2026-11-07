@@ -1,0 +1,173 @@
+- id: max-subarray
+  title: Maximum Subarray
+  pattern: greedy
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/maximum-subarray/
+  fn: max_sub_array
+  statement: |
+    Return the largest sum of any non-empty contiguous subarray.
+
+    ```
+    [-2,1,-3,4,-1,2,1,-5,4] -> 6    ([4,-1,2,1])
+    ```
+  starter: |
+    def max_sub_array(nums):
+        pass
+  tests:
+    - {args: [[-2, 1, -3, 4, -1, 2, 1, -5, 4]], expected: 6}
+    - {args: [[1]], expected: 1}
+    - {args: [[5, 4, -1, 7, 8]], expected: 23}
+    - {args: [[-3, -1, -2]], expected: -1, hidden: true}
+    - {args: [[0, -1, 0]], expected: 0, hidden: true}
+  hints:
+    - "At each element: extend the running subarray or start a new one here."
+  solution: |
+    def max_sub_array(nums):
+        cur = best = nums[0]
+        for x in nums[1:]:
+            cur = max(x, cur + x)
+            best = max(best, cur)
+        return best
+  complexity: O(n) time, O(1) space
+  explain: Kadane's algorithm. Initialising with `nums[0]` (not 0) handles all-negative input.
+
+- id: jump-game
+  title: Jump Game
+  pattern: greedy
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/jump-game/
+  fn: can_jump
+  statement: |
+    `nums[i]` is the maximum jump length from position `i`. Starting at index 0, can you reach the last index?
+
+    ```
+    [2,3,1,1,4] -> True      [3,2,1,0,4] -> False
+    ```
+  starter: |
+    def can_jump(nums):
+        pass
+  tests:
+    - {args: [[2, 3, 1, 1, 4]], expected: true}
+    - {args: [[3, 2, 1, 0, 4]], expected: false}
+    - {args: [[0]], expected: true, hidden: true}
+    - {args: [[2, 0, 0]], expected: true, hidden: true}
+    - {args: [[1, 0, 1]], expected: false, hidden: true}
+  hints:
+    - Track the farthest index reachable so far.
+  solution: |
+    def can_jump(nums):
+        reach = 0
+        for i, step in enumerate(nums):
+            if i > reach:
+                return False
+            reach = max(reach, i + step)
+        return True
+  complexity: O(n) time, O(1) space
+  explain: If you ever stand on an index beyond `reach`, you are stuck.
+
+- id: jump-game-ii
+  title: Jump Game II
+  pattern: greedy
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/jump-game-ii/
+  fn: jump
+  statement: |
+    Same setup as Jump Game, but the last index is always reachable. Return the **minimum number of jumps** to reach it.
+
+    ```
+    [2,3,1,1,4] -> 2
+    ```
+  starter: |
+    def jump(nums):
+        pass
+  tests:
+    - {args: [[2, 3, 1, 1, 4]], expected: 2}
+    - {args: [[2, 3, 0, 1, 4]], expected: 2}
+    - {args: [[1]], expected: 0, hidden: true}
+    - {args: [[1, 2]], expected: 1, hidden: true}
+    - {args: [[1, 1, 1, 1]], expected: 3, hidden: true}
+  hints:
+    - "Think BFS levels: the set of indices reachable with j jumps is an interval."
+  solution: |
+    def jump(nums):
+        jumps = cur_end = farthest = 0
+        for i in range(len(nums) - 1):
+            farthest = max(farthest, i + nums[i])
+            if i == cur_end:
+                jumps += 1
+                cur_end = farthest
+        return jumps
+  complexity: O(n) time, O(1) space
+  explain: Greedy BFS on intervals. Each time you pass the end of the current level, you must take another jump.
+
+- id: gas-station
+  title: Gas Station
+  pattern: greedy
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/gas-station/
+  fn: can_complete_circuit
+  statement: |
+    Stations are in a circle. `gas[i]` is fuel at station `i`; `cost[i]` is the fuel needed to reach the next one. Starting with an empty tank, return the index to start from to complete the circuit once clockwise, or `-1`. If a solution exists it is unique.
+
+    ```
+    gas = [1,2,3,4,5], cost = [3,4,5,1,2] -> 3
+    ```
+  starter: |
+    def can_complete_circuit(gas, cost):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4, 5], [3, 4, 5, 1, 2]], expected: 3}
+    - {args: [[2, 3, 4], [3, 4, 3]], expected: -1}
+    - {args: [[5], [4]], expected: 0, hidden: true}
+    - {args: [[3, 1, 1], [1, 2, 2]], expected: 0, hidden: true}
+  hints:
+    - If total gas < total cost, it's impossible.
+    - If your tank goes negative at station i, no start in [start..i] can work, so restart at i + 1.
+  solution: |
+    def can_complete_circuit(gas, cost):
+        if sum(gas) < sum(cost):
+            return -1
+        tank = start = 0
+        for i in range(len(gas)):
+            tank += gas[i] - cost[i]
+            if tank < 0:
+                tank = 0
+                start = i + 1
+        return start
+  complexity: O(n) time, O(1) space
+  explain: Two facts (global feasibility + local reset) make a linear scan correct.
+
+- id: partition-labels
+  title: Partition Labels
+  pattern: greedy
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/partition-labels/
+  fn: partition_labels
+  statement: |
+    Partition `s` into as many parts as possible so that each letter appears in **at most one** part. Return the sizes of the parts.
+
+    ```
+    "ababcbacadefegdehijhklij" -> [9,7,8]
+    ```
+  starter: |
+    def partition_labels(s):
+        pass
+  tests:
+    - {args: ["ababcbacadefegdehijhklij"], expected: [9, 7, 8]}
+    - {args: ["eccbbbbdec"], expected: [10]}
+    - {args: ["a"], expected: [1], hidden: true}
+    - {args: ["abc"], expected: [1, 1, 1], hidden: true}
+  hints:
+    - Record the last index of every letter. A part can end only when you pass the last occurrence of every letter seen in it.
+  solution: |
+    def partition_labels(s):
+        last = {ch: i for i, ch in enumerate(s)}
+        res, start, end = [], 0, 0
+        for i, ch in enumerate(s):
+            end = max(end, last[ch])
+            if i == end:
+                res.append(end - start + 1)
+                start = i + 1
+        return res
+  complexity: O(n) time, O(1) space
+  explain: A merging-intervals problem in disguise.

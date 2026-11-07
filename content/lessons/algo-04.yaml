@@ -1,0 +1,395 @@
+- id: backtracking
+  track: algo
+  week: 7
+  title: Backtracking
+  summary: "Explore a decision tree: choose, recurse, un-choose. Subsets, permutations, combinations, board search."
+  minutes: 10
+  xp: 30
+  requires: [trees]
+  sections:
+    - md: |
+        Signals: *"all possible…", "generate every…", "can you place/arrange…"* with small `n` (≤ ~20).
+
+        Every solution is the same shape:
+        1. **Choose** an option and add it to the current path.
+        2. **Recurse** on the remaining choices.
+        3. **Un-choose** (pop) so the next option starts from a clean state.
+
+        Prune early (stop as soon as a branch cannot succeed) and avoid duplicates by **sorting** and skipping equal neighbours, or by only picking elements at an index ≥ the current one.
+    - code: |
+        def subsets(nums):
+            res, path = [], []
+            def go(start):
+                res.append(path[:])              # snapshot, not the live list!
+                for i in range(start, len(nums)):
+                    path.append(nums[i])         # choose
+                    go(i + 1)                    # explore
+                    path.pop()                   # un-choose
+            go(0)
+            return res
+
+        print(subsets([1, 2, 3]))
+      caption: "Subsets: the canonical template"
+    - md: |
+        > **Classic bug:** `res.append(path)` stores a reference to the same list that you keep mutating. Always append a copy: `path[:]` or `list(path)`.
+  template: |
+    res, path = [], []
+    def go(start):
+        if is_solution(path):
+            res.append(path[:])          # copy!
+            return                       # (omit for subsets: every node is a solution)
+        for i in range(start, len(choices)):
+            if prune(i):  continue
+            path.append(choices[i])      # choose
+            go(i + 1)                    # i for reuse allowed, 0-based `used` set for permutations
+            path.pop()                   # un-choose
+    go(0)
+  quiz:
+    - q: Why must you append `path[:]` rather than `path`?
+      options: ["Speed", "path is mutated later, so you'd store a reference to a changing list", "Python requires slicing", "It sorts the list"]
+      answer: 1
+      why: Lists are mutable references; later pops/appends would corrupt stored results.
+
+- id: graphs
+  track: algo
+  week: 7
+  title: Graphs (BFS, DFS, Topological sort, Union-Find)
+  summary: Grids and relationships are graphs. Pick BFS for shortest paths, DFS for exploring, union-find for connectivity.
+  minutes: 14
+  xp: 35
+  requires: [trees, py-collections]
+  sections:
+    - md: |
+        **Step 0: build the graph.** Edge list → adjacency dict: `adj = defaultdict(list)`. A grid is already a graph: neighbours are `(r±1, c)` and `(r, c±1)`.
+
+        | Need | Use |
+        |---|---|
+        | Shortest path (unweighted), min steps/levels | **BFS** (queue, mark visited when *enqueuing*) |
+        | Explore regions, count components, flood fill | **DFS** or BFS |
+        | Order with dependencies, detect cycle in a directed graph | **Topological sort** (Kahn's algorithm) |
+        | "Are these connected?" with merging edges | **Union-Find** |
+    - code: |
+        from collections import deque, defaultdict
+
+        DIRS = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+
+        def islands(grid):
+            R, C = len(grid), len(grid[0])
+            seen, count = set(), 0
+            for r in range(R):
+                for c in range(C):
+                    if grid[r][c] == "1" and (r, c) not in seen:
+                        count += 1
+                        q = deque([(r, c)]); seen.add((r, c))
+                        while q:
+                            x, y = q.popleft()
+                            for dx, dy in DIRS:
+                                nx, ny = x + dx, y + dy
+                                if 0 <= nx < R and 0 <= ny < C and grid[nx][ny] == "1" and (nx, ny) not in seen:
+                                    seen.add((nx, ny)); q.append((nx, ny))
+            return count
+
+        print(islands([list("110"), list("010"), list("001")]))
+
+        # Kahn's topological sort: also detects cycles
+        def topo(n, edges):
+            adj, indeg = defaultdict(list), [0] * n
+            for a, b in edges:
+                adj[a].append(b); indeg[b] += 1
+            q = deque(i for i in range(n) if indeg[i] == 0)
+            order = []
+            while q:
+                x = q.popleft(); order.append(x)
+                for y in adj[x]:
+                    indeg[y] -= 1
+                    if indeg[y] == 0: q.append(y)
+            return order if len(order) == n else None     # None => cycle
+
+        print(topo(4, [(0, 1), (1, 2), (0, 3)]), topo(2, [(0, 1), (1, 0)]))
+      caption: Grid BFS flood-fill and Kahn's algorithm
+    - code: |
+        class DSU:
+            def __init__(self, n):
+                self.p = list(range(n)); self.size = [1] * n; self.comps = n
+            def find(self, x):
+                while self.p[x] != x:
+                    self.p[x] = self.p[self.p[x]]      # path compression (halving)
+                    x = self.p[x]
+                return x
+            def union(self, a, b):
+                ra, rb = self.find(a), self.find(b)
+                if ra == rb: return False                # already connected -> this edge makes a cycle
+                if self.size[ra] < self.size[rb]: ra, rb = rb, ra
+                self.p[rb] = ra; self.size[ra] += self.size[rb]; self.comps -= 1
+                return True
+
+        d = DSU(5)
+        d.union(0, 1); d.union(1, 2)
+        print(d.comps, d.find(0) == d.find(2), d.union(0, 2))
+      caption: Union-Find with path compression and union by size
+  template: |
+    # BFS shortest path
+    q = deque([start]); dist = {start: 0}
+    while q:
+        u = q.popleft()
+        for v in adj[u]:
+            if v not in dist:
+                dist[v] = dist[u] + 1; q.append(v)
+
+    # DFS (iterative to dodge the recursion limit)
+    stack, seen = [start], {start}
+    while stack:
+        u = stack.pop()
+        for v in adj[u]:
+            if v not in seen:
+                seen.add(v); stack.append(v)
+  quiz:
+    - q: "When should a BFS node be marked visited?"
+      options: ["When dequeued", "When enqueued", "After all neighbours", "Never"]
+      answer: 1
+      why: Marking on enqueue prevents the same node being queued many times (exponential blow-up on dense graphs).
+    - q: A directed graph has a valid course ordering iff…
+      options: ["It is connected", "It has no cycle", "It has a leaf", "n is even"]
+      answer: 1
+      why: Topological ordering exists exactly for DAGs.
+
+- id: advanced-graphs
+  track: algo
+  week: 8
+  title: Weighted Graphs (Dijkstra, Prim)
+  summary: Shortest paths with weights and minimum spanning trees, both driven by a heap.
+  minutes: 10
+  xp: 30
+  requires: [graphs, heap]
+  sections:
+    - md: |
+        - **Dijkstra:** non-negative weights. Pop the closest unfinalised node from a min-heap, relax its edges. O((V+E) log V).
+        - **Bellman-Ford / "at most k edges":** relax edges k times on a copy of the distances. Handles negative weights and hop limits.
+        - **MST (Prim/Kruskal):** connect all nodes at minimum total weight.
+    - code: |
+        import heapq
+        from collections import defaultdict
+
+        def dijkstra(n, edges, src):
+            adj = defaultdict(list)
+            for u, v, w in edges:
+                adj[u].append((v, w))
+            dist = {src: 0}
+            pq = [(0, src)]
+            while pq:
+                d, u = heapq.heappop(pq)
+                if d > dist.get(u, float("inf")):
+                    continue                      # stale entry
+                for v, w in adj[u]:
+                    nd = d + w
+                    if nd < dist.get(v, float("inf")):
+                        dist[v] = nd
+                        heapq.heappush(pq, (nd, v))
+            return dist
+
+        print(dijkstra(4, [(0, 1, 4), (0, 2, 1), (2, 1, 2), (1, 3, 1)], 0))
+      caption: Dijkstra with lazy deletion
+  template: |
+    pq = [(0, src)]; dist = {}
+    while pq:
+        d, u = heappop(pq)
+        if u in dist: continue          # first pop of u is its shortest distance
+        dist[u] = d
+        for v, w in adj[u]:
+            if v not in dist: heappush(pq, (d + w, v))
+  quiz:
+    - q: Why does Dijkstra fail with negative edge weights?
+      options: ["It's too slow", "A finalised node's distance could later be improved via a negative edge", "Heaps can't hold negatives", "It doesn't"]
+      answer: 1
+      why: Finalising on first pop assumes no later path can be shorter, which only holds for non-negative weights.
+
+- id: greedy
+  track: algo
+  week: 7
+  title: Greedy
+  summary: Make the locally best choice and never look back, but only when you can justify it.
+  minutes: 7
+  xp: 25
+  requires: [intervals]
+  sections:
+    - md: |
+        Greedy works when a **local optimum extends to a global optimum**. In interviews, the *proof* is half the answer:
+
+        - **Exchange argument:** swapping any optimal solution's choice for the greedy choice doesn't make it worse.
+        - **Stays ahead:** after each step greedy is at least as far as any other strategy (jump game).
+
+        Common shapes: sort then sweep (intervals, assignment), running max/min (jump game, Kadane), and counting (gas station).
+        If you can find a counter-example in 60 seconds, switch to DP.
+    - code: |
+        def can_jump(nums):
+            reach = 0
+            for i, step in enumerate(nums):
+                if i > reach:
+                    return False
+                reach = max(reach, i + step)
+            return True
+
+        def max_subarray(nums):               # Kadane: best sum ending here
+            cur = best = nums[0]
+            for x in nums[1:]:
+                cur = max(x, cur + x)
+                best = max(best, cur)
+            return best
+
+        print(can_jump([2, 3, 1, 1, 4]), can_jump([3, 2, 1, 0, 4]), max_subarray([-2, 1, -3, 4, -1, 2, 1, -5, 4]))
+      caption: Two greedy staples
+  quiz:
+    - q: Kadane's algorithm decides at each element whether to…
+      options: ["Sort", "Extend the running subarray or start fresh here", "Use recursion", "Skip it"]
+      answer: 1
+      why: "`cur = max(x, cur + x)`: a negative running sum is never worth carrying forward."
+
+- id: dp-1d
+  track: algo
+  week: 9
+  title: Dynamic Programming I (1-D)
+  summary: "Cache sub-answers. Define the state, write the recurrence, then optimise space."
+  minutes: 14
+  xp: 40
+  requires: [backtracking, greedy]
+  sections:
+    - md: |
+        DP = **recursion + memoisation**. Your reliable procedure:
+
+        1. **State:** what do the parameters of `f(...)` mean? (`f(i)` = best answer for the first `i` items.)
+        2. **Recurrence:** express `f(i)` using smaller states.
+        3. **Base cases.**
+        4. **Order / memo:** top-down with `@cache`, or bottom-up array.
+        5. **Space:** if `f(i)` only needs the previous 1-2 values, keep two variables.
+
+        Signals: *min/max/count ways*, *"can you reach/make…"*, overlapping subproblems in the brute force tree.
+    - code: |
+        from functools import cache
+
+        # Top-down: write the brute force, add @cache. Done.
+        @cache
+        def climb(n):
+            if n <= 2: return n
+            return climb(n - 1) + climb(n - 2)
+
+        # Bottom-up with O(1) space
+        def rob(nums):
+            take = skip = 0
+            for x in nums:
+                take, skip = skip + x, max(take, skip)
+            return max(take, skip)
+
+        # Unbounded knapsack flavour: coin change (fewest coins)
+        def coin_change(coins, amount):
+            INF = amount + 1
+            dp = [0] + [INF] * amount
+            for a in range(1, amount + 1):
+                for c in coins:
+                    if c <= a:
+                        dp[a] = min(dp[a], dp[a - c] + 1)
+            return dp[amount] if dp[amount] != INF else -1
+
+        print(climb(30), rob([2, 7, 9, 3, 1]), coin_change([1, 2, 5], 11))
+      caption: "Three DP shapes: Fibonacci-like, include/skip, unbounded knapsack"
+    - md: |
+        > `@cache` (Python 3.9+) / `@lru_cache(None)` makes top-down DP a two-line change. Mention the recursion limit for deep states; bottom-up avoids it.
+  template: |
+    from functools import cache
+
+    @cache
+    def f(i):
+        if i == BASE: return BASE_VALUE
+        return combine(f(i - 1), f(i - 2), ...)
+
+    # bottom-up
+    dp = [BASE] * (n + 1)
+    for i in range(1, n + 1):
+        dp[i] = combine(dp[i - 1], dp[i - 2], ...)
+  quiz:
+    - q: What does memoisation fix?
+      options: ["Memory use", "Repeated work on overlapping subproblems", "Stack depth", "Sorting"]
+      answer: 1
+      why: Without a cache the same states are recomputed exponentially many times.
+
+- id: dp-2d
+  track: algo
+  week: 10
+  title: Dynamic Programming II (2-D)
+  summary: Grids, two strings and knapsack. The state gets a second index.
+  minutes: 12
+  xp: 40
+  requires: [dp-1d]
+  sections:
+    - md: |
+        Typical states:
+        - **Grid:** `dp[r][c]` = best way to reach cell `(r, c)` (depends on top and left).
+        - **Two strings:** `dp[i][j]` over prefixes `a[:i]`, `b[:j]` (LCS, edit distance).
+        - **Knapsack:** `dp[i][w]` or a 1-D `dp[w]` iterated *backwards* for 0/1 items.
+
+        Always say what `dp[i][j]` **means** out loud before writing the recurrence.
+    - code: |
+        def lcs(a, b):
+            m, n = len(a), len(b)
+            dp = [[0] * (n + 1) for _ in range(m + 1)]
+            for i in range(1, m + 1):
+                for j in range(1, n + 1):
+                    if a[i - 1] == b[j - 1]:
+                        dp[i][j] = dp[i - 1][j - 1] + 1
+                    else:
+                        dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+            return dp[m][n]
+
+        # 0/1 knapsack feasibility with a 1-D array, iterating capacity DOWNWARD
+        def can_make(nums, target):
+            dp = [True] + [False] * target
+            for x in nums:
+                for s in range(target, x - 1, -1):
+                    dp[s] = dp[s] or dp[s - x]
+            return dp[target]
+
+        print(lcs("abcde", "ace"), can_make([1, 5, 11, 5], 11))
+      caption: LCS table and the 0/1 knapsack trick
+    - md: |
+        > **Gotcha:** `[[0] * n] * m` makes *m references to the same row*. Always `[[0] * n for _ in range(m)]`.
+  quiz:
+    - q: In 0/1 knapsack with a 1-D array, why iterate capacity backwards?
+      options: ["Speed", "So each item is used at most once", "To sort", "Python requirement"]
+      answer: 1
+      why: Iterating forwards would let the same item contribute multiple times (that's unbounded knapsack).
+
+- id: bit-manipulation
+  track: algo
+  week: 10
+  title: Bit Manipulation
+  summary: XOR tricks, masks and counting bits. Plus Python's unbounded ints.
+  minutes: 7
+  xp: 20
+  requires: [py-syntax]
+  sections:
+    - md: |
+        | Trick | Meaning |
+        |---|---|
+        | `a ^ a == 0`, `a ^ 0 == a` | pair cancellation (single number) |
+        | `n & (n - 1)` | clears the lowest set bit (count bits, power-of-two test) |
+        | `n & -n` | isolates the lowest set bit |
+        | `1 << k`, `(n >> k) & 1` | set up / read bit k |
+
+        **Python difference:** ints are arbitrary precision and negatives behave as infinite two's complement. To emulate 32-bit math use a mask `& 0xFFFFFFFF`.
+    - code: |
+        def popcount(n):
+            c = 0
+            while n:
+                n &= n - 1       # drop lowest set bit
+                c += 1
+            return c
+
+        print(popcount(0b1011), bin(37), int("101", 2), (5).bit_count())
+        print(-1 & 0xFFFFFFFF, 1 << 40)          # no overflow, masks emulate 32-bit
+        from functools import reduce
+        print(reduce(lambda a, b: a ^ b, [4, 1, 2, 1, 2]))
+      caption: Core bit tricks
+  quiz:
+    - q: What does `n & (n - 1)` do?
+      options: ["Negates n", "Clears the lowest set bit", "Doubles n", "Sets all bits"]
+      answer: 1
+      why: Subtracting 1 flips the lowest set bit and everything below it; AND removes that bit.

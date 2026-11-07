@@ -1,0 +1,543 @@
+- id: climbing-stairs
+  title: Climbing Stairs
+  pattern: dp-1d
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/climbing-stairs/
+  fn: climb_stairs
+  statement: |
+    You climb a staircase of `n` steps, taking 1 or 2 steps at a time. How many distinct ways can you reach the top?
+
+    ```
+    n = 2 -> 2        n = 3 -> 3
+    ```
+  starter: |
+    def climb_stairs(n):
+        pass
+  tests:
+    - {args: [2], expected: 2}
+    - {args: [3], expected: 3}
+    - {args: [1], expected: 1, hidden: true}
+    - {args: [5], expected: 8, hidden: true}
+    - {args: [10], expected: 89, hidden: true}
+    - {args: [45], expected: 1836311903, hidden: true}
+  hints:
+    - To stand on step n you came from n-1 or n-2.
+  solution: |
+    def climb_stairs(n):
+        a, b = 1, 1
+        for _ in range(n - 1):
+            a, b = b, a + b
+        return b
+  complexity: O(n) time, O(1) space
+  explain: It's Fibonacci. The naive recursion is exponential until you add `@cache`.
+
+- id: house-robber
+  title: House Robber
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/house-robber/
+  fn: rob
+  statement: |
+    `nums[i]` is the money in house `i`. You can't rob two adjacent houses. Return the maximum you can rob.
+
+    ```
+    [2,7,9,3,1] -> 12     (2 + 9 + 1)
+    ```
+  starter: |
+    def rob(nums):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 1]], expected: 4}
+    - {args: [[2, 7, 9, 3, 1]], expected: 12}
+    - {args: [[2]], expected: 2, hidden: true}
+    - {args: [[2, 1, 1, 2]], expected: 4, hidden: true}
+    - {args: [[]], expected: 0, hidden: true}
+  hints:
+    - best(i) = max(best(i-1), best(i-2) + nums[i]).
+  solution: |
+    def rob(nums):
+        take = skip = 0
+        for x in nums:
+            take, skip = skip + x, max(take, skip)
+        return max(take, skip)
+  complexity: O(n) time, O(1) space
+  explain: The recurrence only needs the last two states.
+
+- id: house-robber-ii
+  title: House Robber II
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/house-robber-ii/
+  fn: rob_circular
+  statement: |
+    Same as House Robber but the houses form a **circle**: the first and last are adjacent. Return the maximum you can rob.
+
+    ```
+    [2,3,2] -> 3        [1,2,3,1] -> 4
+    ```
+  starter: |
+    def rob_circular(nums):
+        pass
+  tests:
+    - {args: [[2, 3, 2]], expected: 3}
+    - {args: [[1, 2, 3, 1]], expected: 4}
+    - {args: [[1]], expected: 1, hidden: true}
+    - {args: [[1, 2, 3]], expected: 3, hidden: true}
+    - {args: [[200, 3, 140, 20, 10]], expected: 340, hidden: true}
+  hints:
+    - "You can't take both the first and the last house, so solve two linear problems: without the first, and without the last."
+  solution: |
+    def rob_circular(nums):
+        if len(nums) == 1:
+            return nums[0]
+        def line(a):
+            take = skip = 0
+            for x in a:
+                take, skip = skip + x, max(take, skip)
+            return max(take, skip)
+        return max(line(nums[1:]), line(nums[:-1]))
+  complexity: O(n) time, O(1) space (excluding slices)
+  explain: Reducing a new constraint to two instances of a solved problem is a recurring DP move.
+
+- id: coin-change
+  title: Coin Change
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/coin-change/
+  fn: coin_change
+  statement: |
+    Given coin denominations `coins` (unlimited supply) and an `amount`, return the **fewest coins** needed to make it, or `-1` if impossible.
+
+    ```
+    coins = [1,2,5], amount = 11 -> 3
+    coins = [2], amount = 3 -> -1
+    ```
+  starter: |
+    def coin_change(coins, amount):
+        pass
+  tests:
+    - {args: [[1, 2, 5], 11], expected: 3}
+    - {args: [[2], 3], expected: -1}
+    - {args: [[1], 0], expected: 0}
+    - {args: [[2, 5, 10, 1], 27], expected: 4, hidden: true}
+    - {args: [[186, 419, 83, 408], 6249], expected: 20, hidden: true}
+    - {args: [[5, 7], 1], expected: -1, hidden: true}
+  hints:
+    - dp[a] = 1 + min(dp[a - c]) over coins c <= a. Greedy (largest coin first) is wrong here.
+  solution: |
+    def coin_change(coins, amount):
+        INF = amount + 1
+        dp = [0] + [INF] * amount
+        for a in range(1, amount + 1):
+            for c in coins:
+                if c <= a:
+                    dp[a] = min(dp[a], dp[a - c] + 1)
+        return dp[amount] if dp[amount] != INF else -1
+  complexity: O(amount · len(coins)) time, O(amount) space
+  explain: "Counter-example to greedy: coins [1, 3, 4], amount 6. Greedy gives 4+1+1, DP finds 3+3."
+
+- id: lis
+  title: Longest Increasing Subsequence
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/longest-increasing-subsequence/
+  fn: length_of_lis
+  statement: |
+    Return the length of the longest strictly increasing **subsequence** (not necessarily contiguous).
+
+    ```
+    [10,9,2,5,3,7,101,18] -> 4     (2,3,7,101)
+    ```
+  starter: |
+    def length_of_lis(nums):
+        pass
+  tests:
+    - {args: [[10, 9, 2, 5, 3, 7, 101, 18]], expected: 4}
+    - {args: [[0, 1, 0, 3, 2, 3]], expected: 4}
+    - {args: [[7, 7, 7, 7]], expected: 1}
+    - {args: [[1]], expected: 1, hidden: true}
+    - {args: [[4, 10, 4, 3, 8, 9]], expected: 3, hidden: true}
+  hints:
+    - "O(n²): dp[i] = 1 + max(dp[j]) for j < i with nums[j] < nums[i]."
+    - "O(n log n): maintain `tails` where tails[k] is the smallest tail of an increasing subsequence of length k+1. Use bisect."
+  solution: |
+    from bisect import bisect_left
+
+    def length_of_lis(nums):
+        tails = []
+        for x in nums:
+            i = bisect_left(tails, x)
+            if i == len(tails):
+                tails.append(x)
+            else:
+                tails[i] = x
+        return len(tails)
+  complexity: O(n log n) time, O(n) space
+  explain: '`tails` is not the subsequence itself, only its length is meaningful.'
+
+- id: word-break
+  title: Word Break
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/word-break/
+  fn: word_break
+  statement: |
+    Return whether `s` can be segmented into a space-separated sequence of words from `word_dict` (words may be reused).
+
+    ```
+    "leetcode", ["leet","code"] -> True
+    "catsandog", ["cats","dog","sand","and","cat"] -> False
+    ```
+  starter: |
+    def word_break(s, word_dict):
+        pass
+  tests:
+    - {args: ["leetcode", ["leet", "code"]], expected: true}
+    - {args: ["applepenapple", ["apple", "pen"]], expected: true}
+    - {args: ["catsandog", ["cats", "dog", "sand", "and", "cat"]], expected: false}
+    - {args: ["a", ["b"]], expected: false, hidden: true}
+    - {args: ["aaaaaaa", ["aaaa", "aaa"]], expected: true, hidden: true}
+  hints:
+    - dp[i] = whether the prefix s[:i] can be segmented. Try every word that ends at i.
+  solution: |
+    def word_break(s, word_dict):
+        words = set(word_dict)
+        dp = [True] + [False] * len(s)
+        for i in range(1, len(s) + 1):
+            for j in range(i):
+                if dp[j] and s[j:i] in words:
+                    dp[i] = True
+                    break
+        return dp[len(s)]
+  complexity: O(n² · L) time
+  explain: Limit j to `i - max_word_len` to speed it up.
+
+- id: decode-ways
+  title: Decode Ways
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/decode-ways/
+  fn: num_decodings
+  statement: |
+    Letters map `A=1 … Z=26`. Given a digit string `s`, return the number of ways to decode it.
+
+    ```
+    "12" -> 2 (AB, L)       "226" -> 3       "06" -> 0
+    ```
+  starter: |
+    def num_decodings(s):
+        pass
+  tests:
+    - {args: ["12"], expected: 2}
+    - {args: ["226"], expected: 3}
+    - {args: ["06"], expected: 0}
+    - {args: ["10"], expected: 1, hidden: true}
+    - {args: ["27"], expected: 1, hidden: true}
+    - {args: ["2101"], expected: 1, hidden: true}
+    - {args: ["11106"], expected: 2, hidden: true}
+  hints:
+    - "ways(i) = (one digit valid ? ways(i-1) : 0) + (two digits in 10..26 ? ways(i-2) : 0)."
+  solution: |
+    def num_decodings(s):
+        prev2, prev1 = 1, 1 if s and s[0] != "0" else 0
+        if not s:
+            return 0
+        for i in range(2, len(s) + 1):
+            cur = 0
+            if s[i - 1] != "0":
+                cur += prev1
+            if 10 <= int(s[i - 2:i]) <= 26:
+                cur += prev2
+            prev2, prev1 = prev1, cur
+        return prev1
+  complexity: O(n) time, O(1) space
+  explain: Leading zeros are the main edge case.
+
+- id: max-product-subarray
+  title: Maximum Product Subarray
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/maximum-product-subarray/
+  fn: max_product
+  statement: |
+    Return the largest product of any non-empty contiguous subarray.
+
+    ```
+    [2,3,-2,4] -> 6      [-2,0,-1] -> 0      [-2,3,-4] -> 24
+    ```
+  starter: |
+    def max_product(nums):
+        pass
+  tests:
+    - {args: [[2, 3, -2, 4]], expected: 6}
+    - {args: [[-2, 0, -1]], expected: 0}
+    - {args: [[-2, 3, -4]], expected: 24}
+    - {args: [[-2]], expected: -2, hidden: true}
+    - {args: [[0, 2]], expected: 2, hidden: true}
+  hints:
+    - A very negative running product can become the maximum after multiplying by another negative, so track both max and min.
+  solution: |
+    def max_product(nums):
+        hi = lo = best = nums[0]
+        for x in nums[1:]:
+            cand = (x, hi * x, lo * x)
+            hi, lo = max(cand), min(cand)
+            best = max(best, hi)
+        return best
+  complexity: O(n) time, O(1) space
+  explain: Kadane's idea with two running values.
+
+- id: palindromic-substrings
+  title: Palindromic Substrings
+  pattern: dp-1d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/palindromic-substrings/
+  fn: count_substrings
+  statement: |
+    Count the substrings of `s` that are palindromes (positions count separately, even if the text is the same).
+
+    ```
+    "abc" -> 3        "aaa" -> 6
+    ```
+  starter: |
+    def count_substrings(s):
+        pass
+  tests:
+    - {args: ["abc"], expected: 3}
+    - {args: ["aaa"], expected: 6}
+    - {args: ["a"], expected: 1, hidden: true}
+    - {args: ["abba"], expected: 6, hidden: true}
+    - {args: ["racecar"], expected: 10, hidden: true}
+  hints:
+    - Expand around every centre (n odd centres + n-1 even centres).
+  solution: |
+    def count_substrings(s):
+        n, total = len(s), 0
+        for centre in range(2 * n - 1):
+            l, r = centre // 2, centre // 2 + centre % 2
+            while l >= 0 and r < n and s[l] == s[r]:
+                total += 1
+                l -= 1
+                r += 1
+        return total
+  complexity: O(n²) time, O(1) space
+  explain: Expand-around-centre beats a full DP table on space. Manacher's algorithm is O(n).
+
+- id: unique-paths
+  title: Unique Paths
+  pattern: dp-2d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/unique-paths/
+  fn: unique_paths
+  statement: |
+    A robot starts at the top-left of an `m x n` grid and may move only right or down. How many unique paths lead to the bottom-right?
+
+    ```
+    m = 3, n = 7 -> 28         m = 3, n = 2 -> 3
+    ```
+  starter: |
+    def unique_paths(m, n):
+        pass
+  tests:
+    - {args: [3, 7], expected: 28}
+    - {args: [3, 2], expected: 3}
+    - {args: [1, 1], expected: 1, hidden: true}
+    - {args: [3, 3], expected: 6, hidden: true}
+    - {args: [10, 10], expected: 48620, hidden: true}
+  hints:
+    - paths(r, c) = paths(r-1, c) + paths(r, c-1). One row of state is enough.
+  solution: |
+    def unique_paths(m, n):
+        row = [1] * n
+        for _ in range(1, m):
+            for c in range(1, n):
+                row[c] += row[c - 1]
+        return row[-1]
+  complexity: O(m·n) time, O(n) space
+  explain: There is also a closed form, C(m+n-2, m-1), via math.comb.
+
+- id: min-path-sum
+  title: Minimum Path Sum
+  pattern: dp-2d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/minimum-path-sum/
+  fn: min_path_sum
+  statement: |
+    Moving only right or down from the top-left to the bottom-right of a grid of non-negative numbers, return the minimum sum along a path.
+
+    ```
+    [[1,3,1],[1,5,1],[4,2,1]] -> 7
+    ```
+  starter: |
+    def min_path_sum(grid):
+        pass
+  tests:
+    - {args: [[[1, 3, 1], [1, 5, 1], [4, 2, 1]]], expected: 7}
+    - {args: [[[1, 2, 3], [4, 5, 6]]], expected: 12}
+    - {args: [[[5]]], expected: 5, hidden: true}
+    - {args: [[[1, 2], [1, 1]]], expected: 3, hidden: true}
+  hints:
+    - cost(r, c) = grid[r][c] + min(cost from above, cost from left).
+  solution: |
+    def min_path_sum(grid):
+        R, C = len(grid), len(grid[0])
+        dp = [float("inf")] * C
+        dp[0] = 0
+        for r in range(R):
+            dp[0] += grid[r][0]
+            for c in range(1, C):
+                dp[c] = grid[r][c] + min(dp[c], dp[c - 1])
+        return dp[-1]
+  complexity: O(R·C) time, O(C) space
+  explain: Reusing one row works because `dp[c]` still holds the value from the row above.
+
+- id: lcs
+  title: Longest Common Subsequence
+  pattern: dp-2d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/longest-common-subsequence/
+  fn: longest_common_subsequence
+  statement: |
+    Return the length of the longest common **subsequence** of two strings.
+
+    ```
+    "abcde", "ace" -> 3
+    ```
+  starter: |
+    def longest_common_subsequence(a, b):
+        pass
+  tests:
+    - {args: ["abcde", "ace"], expected: 3}
+    - {args: ["abc", "abc"], expected: 3}
+    - {args: ["abc", "def"], expected: 0}
+    - {args: ["", "a"], expected: 0, hidden: true}
+    - {args: ["bl", "yby"], expected: 1, hidden: true}
+    - {args: ["oxcpqrsvwf", "shmtulqrypy"], expected: 2, hidden: true}
+  hints:
+    - dp[i][j] over prefixes. If the last chars match, 1 + dp[i-1][j-1]; else the max of dropping one char.
+  solution: |
+    def longest_common_subsequence(a, b):
+        m, n = len(a), len(b)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if a[i - 1] == b[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1] + 1
+                else:
+                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+        return dp[m][n]
+  complexity: O(m·n) time and space
+  explain: Keep only two rows for O(min(m, n)) space.
+
+- id: edit-distance
+  title: Edit Distance
+  pattern: dp-2d
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/edit-distance/
+  fn: min_distance
+  statement: |
+    Return the minimum number of operations (insert, delete, replace a character) to convert `a` into `b`.
+
+    ```
+    "horse" -> "ros"            3
+    "intention" -> "execution"  5
+    ```
+  starter: |
+    def min_distance(a, b):
+        pass
+  tests:
+    - {args: ["horse", "ros"], expected: 3}
+    - {args: ["intention", "execution"], expected: 5}
+    - {args: ["", ""], expected: 0, hidden: true}
+    - {args: ["a", ""], expected: 1, hidden: true}
+    - {args: ["abc", "abc"], expected: 0, hidden: true}
+    - {args: ["", "abc"], expected: 3, hidden: true}
+  hints:
+    - dp[i][j] = cost to turn a[:i] into b[:j]. If chars equal, copy the diagonal; else 1 + min(insert, delete, replace).
+  solution: |
+    def min_distance(a, b):
+        m, n = len(a), len(b)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if a[i - 1] == b[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+        return dp[m][n]
+  complexity: O(m·n) time and space
+  explain: The three neighbours correspond to delete, insert and replace.
+
+- id: partition-equal-subset
+  title: Partition Equal Subset Sum
+  pattern: dp-2d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/partition-equal-subset-sum/
+  fn: can_partition
+  statement: |
+    Can `nums` be split into two subsets with equal sum?
+
+    ```
+    [1,5,11,5] -> True       [1,2,3,5] -> False
+    ```
+  starter: |
+    def can_partition(nums):
+        pass
+  tests:
+    - {args: [[1, 5, 11, 5]], expected: true}
+    - {args: [[1, 2, 3, 5]], expected: false}
+    - {args: [[2, 2]], expected: true, hidden: true}
+    - {args: [[1]], expected: false, hidden: true}
+    - {args: [[1, 2, 5]], expected: false, hidden: true}
+  hints:
+    - "If the total is odd, it's impossible. Otherwise ask: can a subset reach total/2? That is 0/1 knapsack."
+  solution: |
+    def can_partition(nums):
+        total = sum(nums)
+        if total % 2:
+            return False
+        target = total // 2
+        dp = [True] + [False] * target
+        for x in nums:
+            for s in range(target, x - 1, -1):
+                dp[s] = dp[s] or dp[s - x]
+        return dp[target]
+  complexity: O(n · sum) time, O(sum) space
+  explain: Iterating downward prevents reusing the same number twice.
+
+- id: coin-change-ii
+  title: Coin Change II (count ways)
+  pattern: dp-2d
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/coin-change-ii/
+  fn: change
+  statement: |
+    Return the **number of combinations** that make `amount` from unlimited coins of the given denominations (order doesn't matter).
+
+    ```
+    amount = 5, coins = [1,2,5] -> 4
+    ```
+  starter: |
+    def change(amount, coins):
+        pass
+  tests:
+    - {args: [5, [1, 2, 5]], expected: 4}
+    - {args: [3, [2]], expected: 0}
+    - {args: [10, [10]], expected: 1}
+    - {args: [0, [7]], expected: 1, hidden: true}
+    - {args: [10, [2, 5, 3, 6]], expected: 5, hidden: true}
+  hints:
+    - Loop coins in the OUTER loop and amounts in the inner loop. That counts combinations rather than permutations.
+  solution: |
+    def change(amount, coins):
+        dp = [1] + [0] * amount
+        for c in coins:
+            for a in range(c, amount + 1):
+                dp[a] += dp[a - c]
+        return dp[amount]
+  complexity: O(amount · len(coins)) time, O(amount) space
+  explain: Swapping the loop order would count ordered sequences. Interviewers love asking why.

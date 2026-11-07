@@ -1,0 +1,128 @@
+- id: network-delay-time
+  title: Network Delay Time
+  pattern: advanced-graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/network-delay-time/
+  fn: network_delay_time
+  statement: |
+    A directed weighted graph has nodes `1..n`; `times[i] = [u, v, w]` is a signal travel time from `u` to `v`. A signal is sent from node `k`. Return how long until **all** nodes receive it, or `-1` if some never do.
+
+    ```
+    times = [[2,1,1],[2,3,1],[3,4,1]], n = 4, k = 2 -> 2
+    ```
+  starter: |
+    def network_delay_time(times, n, k):
+        pass
+  tests:
+    - {args: [[[2, 1, 1], [2, 3, 1], [3, 4, 1]], 4, 2], expected: 2}
+    - {args: [[[1, 2, 1]], 2, 1], expected: 1}
+    - {args: [[[1, 2, 1]], 2, 2], expected: -1}
+    - {args: [[[1, 2, 1], [2, 3, 2], [1, 3, 4]], 3, 1], expected: 3, hidden: true}
+    - {args: [[], 1, 1], expected: 0, hidden: true}
+  hints:
+    - Run Dijkstra from k. The answer is the largest shortest distance, if every node is reached.
+  solution: |
+    import heapq
+    from collections import defaultdict
+
+    def network_delay_time(times, n, k):
+        adj = defaultdict(list)
+        for u, v, w in times:
+            adj[u].append((v, w))
+        dist = {}
+        pq = [(0, k)]
+        while pq:
+            d, u = heapq.heappop(pq)
+            if u in dist:
+                continue
+            dist[u] = d
+            for v, w in adj[u]:
+                if v not in dist:
+                    heapq.heappush(pq, (d + w, v))
+        return max(dist.values()) if len(dist) == n else -1
+  complexity: O(E log V) time
+  explain: Finalising on first pop is the clean idiom.
+
+- id: cheapest-flights-k-stops
+  title: Cheapest Flights Within K Stops
+  pattern: advanced-graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/cheapest-flights-within-k-stops/
+  fn: find_cheapest_price
+  statement: |
+    There are `n` cities and directed `flights[i] = [from, to, price]`. Return the cheapest price from `src` to `dst` with **at most `k` stops** (intermediate cities), or `-1`.
+
+    ```
+    n = 4, flights = [[0,1,100],[1,2,100],[2,0,100],[1,3,600],[2,3,200]], src = 0, dst = 3, k = 1 -> 700
+    ```
+  starter: |
+    def find_cheapest_price(n, flights, src, dst, k):
+        pass
+  tests:
+    - {args: [4, [[0, 1, 100], [1, 2, 100], [2, 0, 100], [1, 3, 600], [2, 3, 200]], 0, 3, 1], expected: 700}
+    - {args: [4, [[0, 1, 100], [1, 2, 100], [2, 0, 100], [1, 3, 600], [2, 3, 200]], 0, 3, 2], expected: 400, hidden: true}
+    - {args: [3, [[0, 1, 100], [1, 2, 100], [0, 2, 500]], 0, 2, 1], expected: 200}
+    - {args: [3, [[0, 1, 100], [1, 2, 100], [0, 2, 500]], 0, 2, 0], expected: 500}
+    - {args: [3, [[0, 1, 100], [1, 2, 100], [0, 2, 500]], 0, 1, 0], expected: 100, hidden: true}
+    - {args: [3, [[0, 1, 100]], 0, 2, 1], expected: -1, hidden: true}
+  hints:
+    - Plain Dijkstra isn't enough because the hop limit matters. Use Bellman-Ford limited to k+1 rounds.
+    - Each round, relax edges using a copy of the previous round's distances.
+  solution: |
+    def find_cheapest_price(n, flights, src, dst, k):
+        INF = float("inf")
+        dist = [INF] * n
+        dist[src] = 0
+        for _ in range(k + 1):
+            nxt = dist[:]
+            for u, v, w in flights:
+                if dist[u] + w < nxt[v]:
+                    nxt[v] = dist[u] + w
+            dist = nxt
+        return -1 if dist[dst] == INF else dist[dst]
+  complexity: O(k · E) time, O(n) space
+  explain: Using the previous round's copy guarantees each round adds exactly one edge.
+
+- id: min-cost-connect-points
+  title: Min Cost to Connect All Points
+  pattern: advanced-graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/min-cost-to-connect-all-points/
+  fn: min_cost_connect_points
+  statement: |
+    Given points `[x, y]`, the cost to connect two is their Manhattan distance. Return the minimum total cost so that every pair of points is connected by a path.
+
+    ```
+    [[0,0],[2,2],[3,10],[5,2],[7,0]] -> 20
+    ```
+  starter: |
+    def min_cost_connect_points(points):
+        pass
+  tests:
+    - {args: [[[0, 0], [2, 2], [3, 10], [5, 2], [7, 0]]], expected: 20}
+    - {args: [[[3, 12], [-2, 5], [-4, 1]]], expected: 18}
+    - {args: [[[0, 0]]], expected: 0, hidden: true}
+    - {args: [[[0, 0], [1, 1]]], expected: 2, hidden: true}
+  hints:
+    - This is a minimum spanning tree on a complete graph. Prim's algorithm with a heap works well.
+  solution: |
+    import heapq
+
+    def min_cost_connect_points(points):
+        n = len(points)
+        seen = set()
+        pq = [(0, 0)]
+        total = 0
+        while len(seen) < n:
+            d, i = heapq.heappop(pq)
+            if i in seen:
+                continue
+            seen.add(i)
+            total += d
+            xi, yi = points[i]
+            for j in range(n):
+                if j not in seen:
+                    heapq.heappush(pq, (abs(xi - points[j][0]) + abs(yi - points[j][1]), j))
+        return total
+  complexity: O(n² log n) time with a heap
+  explain: Dense graph, so O(n²) Prim without a heap is optimal. Kruskal + union-find is the alternative.

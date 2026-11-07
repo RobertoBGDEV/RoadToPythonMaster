@@ -56,7 +56,7 @@
     - {args: [[2, 2]], expected: 0}
     - {args: [[10, 4, 2, 10]], expected: 2, hidden: true}
   hints:
-    - You need the two largest repeatedly: a max-heap (negate the values).
+    - "You need the two largest repeatedly: a max-heap (negate the values)."
   solution: |
     import heapq
 

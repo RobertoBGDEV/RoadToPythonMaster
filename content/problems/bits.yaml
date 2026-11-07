@@ -1,0 +1,191 @@
+- id: single-number
+  title: Single Number
+  pattern: bit-manipulation
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/single-number/
+  fn: single_number
+  statement: |
+    Every element appears exactly twice except one. Find that one using O(1) extra space.
+
+    ```
+    [4,1,2,1,2] -> 4
+    ```
+  starter: |
+    def single_number(nums):
+        pass
+  tests:
+    - {args: [[2, 2, 1]], expected: 1}
+    - {args: [[4, 1, 2, 1, 2]], expected: 4}
+    - {args: [[1]], expected: 1, hidden: true}
+    - {args: [[-1, -1, -2]], expected: -2, hidden: true}
+  hints:
+    - a ^ a == 0 and a ^ 0 == a.
+  solution: |
+    def single_number(nums):
+        r = 0
+        for x in nums:
+            r ^= x
+        return r
+  complexity: O(n) time, O(1) space
+  explain: XOR is commutative, so every pair cancels out regardless of order.
+
+- id: number-of-1-bits
+  title: Number of 1 Bits
+  pattern: bit-manipulation
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/number-of-1-bits/
+  fn: hamming_weight
+  statement: |
+    Return the number of set bits (`1`s) in the binary representation of a non-negative integer.
+
+    ```
+    11 (1011) -> 3        128 -> 1
+    ```
+  starter: |
+    def hamming_weight(n):
+        pass
+  tests:
+    - {args: [11], expected: 3}
+    - {args: [128], expected: 1}
+    - {args: [2147483645], expected: 30}
+    - {args: [0], expected: 0, hidden: true}
+    - {args: [255], expected: 8, hidden: true}
+  hints:
+    - n & (n - 1) removes the lowest set bit.
+  solution: |
+    def hamming_weight(n):
+        c = 0
+        while n:
+            n &= n - 1
+            c += 1
+        return c
+  complexity: O(number of set bits) time, O(1) space
+  explain: Python 3.10+ also has `int.bit_count()`. Know both.
+
+- id: counting-bits
+  title: Counting Bits
+  pattern: bit-manipulation
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/counting-bits/
+  fn: count_bits
+  statement: |
+    Return a list `ans` of length `n + 1` where `ans[i]` is the number of `1`s in the binary form of `i`. Aim for O(n) total.
+
+    ```
+    n = 5 -> [0,1,1,2,1,2]
+    ```
+  starter: |
+    def count_bits(n):
+        pass
+  tests:
+    - {args: [2], expected: [0, 1, 1]}
+    - {args: [5], expected: [0, 1, 1, 2, 1, 2]}
+    - {args: [0], expected: [0], hidden: true}
+    - {args: [8], expected: [0, 1, 1, 2, 1, 2, 2, 3, 1], hidden: true}
+  hints:
+    - bits(i) = bits(i >> 1) + (i & 1).
+  solution: |
+    def count_bits(n):
+        ans = [0] * (n + 1)
+        for i in range(1, n + 1):
+            ans[i] = ans[i >> 1] + (i & 1)
+        return ans
+  complexity: O(n) time and space
+  explain: A tiny DP over the number's own prefix.
+
+- id: missing-number
+  title: Missing Number
+  pattern: bit-manipulation
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/missing-number/
+  fn: missing_number
+  statement: |
+    `nums` holds `n` distinct numbers from `0..n`. Return the one missing from the range.
+
+    ```
+    [3,0,1] -> 2        [9,6,4,2,3,5,7,0,1] -> 8
+    ```
+  starter: |
+    def missing_number(nums):
+        pass
+  tests:
+    - {args: [[3, 0, 1]], expected: 2}
+    - {args: [[0, 1]], expected: 2}
+    - {args: [[9, 6, 4, 2, 3, 5, 7, 0, 1]], expected: 8}
+    - {args: [[0]], expected: 1, hidden: true}
+    - {args: [[1]], expected: 0, hidden: true}
+  hints:
+    - Sum formula n(n+1)/2, or XOR all indices and values.
+  solution: |
+    def missing_number(nums):
+        n = len(nums)
+        return n * (n + 1) // 2 - sum(nums)
+  complexity: O(n) time, O(1) space
+  explain: XOR avoids overflow concerns in fixed-width languages (irrelevant in Python, but a Java interviewer may ask).
+
+- id: reverse-bits
+  title: Reverse Bits
+  pattern: bit-manipulation
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/reverse-bits/
+  fn: reverse_bits
+  statement: |
+    Reverse the bits of a 32-bit unsigned integer and return the result as an unsigned integer.
+
+    ```
+    43261596 (00000010100101000001111010011100) -> 964176192
+    ```
+  starter: |
+    def reverse_bits(n):
+        pass
+  tests:
+    - {args: [43261596], expected: 964176192}
+    - {args: [4294967293], expected: 3221225471}
+    - {args: [0], expected: 0, hidden: true}
+    - {args: [1], expected: 2147483648, hidden: true}
+  hints:
+    - Shift the result left and pull in the lowest bit of n, 32 times.
+  solution: |
+    def reverse_bits(n):
+        res = 0
+        for _ in range(32):
+            res = (res << 1) | (n & 1)
+            n >>= 1
+        return res
+  complexity: O(32) time, O(1) space
+  explain: Fixed 32 iterations, so leading zeros of the input are preserved as trailing zeros.
+
+- id: sum-of-two-integers
+  title: Sum of Two Integers (no + or -)
+  pattern: bit-manipulation
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/sum-of-two-integers/
+  fn: get_sum
+  statement: |
+    Return `a + b` **without** using `+` or `-`. Inputs may be negative.
+
+    ```
+    1, 2 -> 3        -2, -3 -> -5
+    ```
+    **Python twist:** integers are unbounded, so negatives never "wrap". You'll need a 32-bit mask.
+  starter: |
+    def get_sum(a, b):
+        pass
+  tests:
+    - {args: [1, 2], expected: 3}
+    - {args: [2, 3], expected: 5}
+    - {args: [-1, 1], expected: 0}
+    - {args: [-2, -3], expected: -5, hidden: true}
+    - {args: [20, 30], expected: 50, hidden: true}
+    - {args: [-5, 3], expected: -2, hidden: true}
+  hints:
+    - XOR adds without carry; AND shifted left is the carry. Repeat until no carry.
+    - Mask to 32 bits each round, then convert back to a negative if bit 31 is set.
+  solution: |
+    def get_sum(a, b):
+        MASK, MAX = 0xFFFFFFFF, 0x7FFFFFFF
+        while b:
+            a, b = (a ^ b) & MASK, ((a & b) << 1) & MASK
+        return a if a <= MAX else ~(a ^ MASK)
+  complexity: O(32) time, O(1) space
+  explain: "`~(a ^ MASK)` converts a 32-bit two's-complement pattern back into Python's negative integer."

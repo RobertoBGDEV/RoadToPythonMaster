@@ -170,7 +170,7 @@
     - {args: [[-1, -1, 2, 2, 2, 3], 1], expected: [2], hidden: true}
   hints:
     - Count first. Then you need the k largest counts.
-    - Bucket sort: index = frequency, so no sorting is needed.
+    - "Bucket sort: index = frequency, so no sorting is needed."
   solution: |
     def top_k_frequent(nums, k):
         from collections import Counter

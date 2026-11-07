@@ -1,0 +1,304 @@
+- id: number-of-islands
+  title: Number of Islands
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/number-of-islands/
+  fn: num_islands
+  statement: |
+    `grid` is a 2-D list of `"1"` (land) and `"0"` (water). Count the islands: groups of land connected horizontally or vertically.
+
+    ```
+    [["1","1","0","0","0"],
+     ["1","1","0","0","0"],
+     ["0","0","1","0","0"],
+     ["0","0","0","1","1"]] -> 3
+    ```
+  starter: |
+    def num_islands(grid):
+        pass
+  tests:
+    - {args: [[["1", "1", "1", "1", "0"], ["1", "1", "0", "1", "0"], ["1", "1", "0", "0", "0"], ["0", "0", "0", "0", "0"]]], expected: 1}
+    - {args: [[["1", "1", "0", "0", "0"], ["1", "1", "0", "0", "0"], ["0", "0", "1", "0", "0"], ["0", "0", "0", "1", "1"]]], expected: 3}
+    - {args: [[["0"]]], expected: 0, hidden: true}
+    - {args: [[["1"]]], expected: 1, hidden: true}
+    - {args: [[["1", "0", "1"], ["0", "1", "0"], ["1", "0", "1"]]], expected: 5, hidden: true}
+  hints:
+    - For each unvisited land cell, start a flood fill that marks the whole island, and count +1.
+  solution: |
+    def num_islands(grid):
+        R, C = len(grid), len(grid[0])
+        def sink(r, c):
+            if not (0 <= r < R and 0 <= c < C) or grid[r][c] != "1":
+                return
+            grid[r][c] = "0"
+            sink(r + 1, c); sink(r - 1, c); sink(r, c + 1); sink(r, c - 1)
+        count = 0
+        for r in range(R):
+            for c in range(C):
+                if grid[r][c] == "1":
+                    count += 1
+                    sink(r, c)
+        return count
+  complexity: O(R·C) time and space
+  explain: Mutating the grid saves a visited set. Ask the interviewer if mutation is allowed.
+
+- id: max-area-island
+  title: Max Area of Island
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/max-area-of-island/
+  fn: max_area_of_island
+  statement: |
+    `grid` contains `0` and `1`. Return the area (cell count) of the largest island of connected `1`s, or `0`.
+
+    ```
+    [[1,1,0],[1,0,0],[0,0,1]] -> 3
+    ```
+  starter: |
+    def max_area_of_island(grid):
+        pass
+  tests:
+    - {args: [[[1, 1, 0], [1, 0, 0], [0, 0, 1]]], expected: 3}
+    - {args: [[[0, 0, 0, 0, 0, 0, 0, 0]]], expected: 0}
+    - {args: [[[1]]], expected: 1, hidden: true}
+    - {args: [[[1, 1], [1, 0]]], expected: 3, hidden: true}
+    - {args: [[[0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0], [0, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0], [0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0]]], expected: 6, hidden: true}
+  hints:
+    - The DFS can return the size of the component it explored.
+  solution: |
+    def max_area_of_island(grid):
+        R, C = len(grid), len(grid[0])
+        def dfs(r, c):
+            if not (0 <= r < R and 0 <= c < C) or grid[r][c] != 1:
+                return 0
+            grid[r][c] = 0
+            return 1 + dfs(r + 1, c) + dfs(r - 1, c) + dfs(r, c + 1) + dfs(r, c - 1)
+        return max((dfs(r, c) for r in range(R) for c in range(C)), default=0)
+  complexity: O(R·C) time and space
+  explain: Same traversal as number-of-islands, returning a value up.
+
+- id: rotting-oranges
+  title: Rotting Oranges
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/rotting-oranges/
+  fn: oranges_rotting
+  statement: |
+    Grid cells: `0` empty, `1` fresh orange, `2` rotten orange. Each minute, fresh oranges 4-adjacent to a rotten one become rotten. Return the minutes until none are fresh, or `-1` if impossible.
+
+    ```
+    [[2,1,1],[1,1,0],[0,1,1]] -> 4
+    [[2,1,1],[0,1,1],[1,0,1]] -> -1
+    ```
+  starter: |
+    def oranges_rotting(grid):
+        pass
+  tests:
+    - {args: [[[2, 1, 1], [1, 1, 0], [0, 1, 1]]], expected: 4}
+    - {args: [[[2, 1, 1], [0, 1, 1], [1, 0, 1]]], expected: -1}
+    - {args: [[[0, 2]]], expected: 0}
+    - {args: [[[0]]], expected: 0, hidden: true}
+    - {args: [[[1]]], expected: -1, hidden: true}
+    - {args: [[[2, 1]]], expected: 1, hidden: true}
+  hints:
+    - "Multi-source BFS: start with ALL rotten oranges in the queue; each BFS layer is one minute."
+  solution: |
+    from collections import deque
+
+    def oranges_rotting(grid):
+        R, C = len(grid), len(grid[0])
+        q, fresh = deque(), 0
+        for r in range(R):
+            for c in range(C):
+                if grid[r][c] == 2:
+                    q.append((r, c))
+                elif grid[r][c] == 1:
+                    fresh += 1
+        minutes = 0
+        while q and fresh:
+            for _ in range(len(q)):
+                r, c = q.popleft()
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < R and 0 <= nc < C and grid[nr][nc] == 1:
+                        grid[nr][nc] = 2
+                        fresh -= 1
+                        q.append((nr, nc))
+            minutes += 1
+        return -1 if fresh else minutes
+  complexity: O(R·C) time and space
+  explain: Multi-source BFS is the answer whenever things spread simultaneously from several starting points.
+
+- id: course-schedule
+  title: Course Schedule
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/course-schedule/
+  fn: can_finish
+  statement: |
+    There are `num_courses` courses `0..n-1`. `prerequisites[i] = [a, b]` means you must take `b` before `a`. Return whether all courses can be finished (i.e. the graph has no cycle).
+
+    ```
+    2, [[1,0]] -> True      2, [[1,0],[0,1]] -> False
+    ```
+  starter: |
+    def can_finish(num_courses, prerequisites):
+        pass
+  tests:
+    - {args: [2, [[1, 0]]], expected: true}
+    - {args: [2, [[1, 0], [0, 1]]], expected: false}
+    - {args: [1, []], expected: true, hidden: true}
+    - {args: [4, [[1, 0], [2, 1], [3, 2]]], expected: true, hidden: true}
+    - {args: [3, [[0, 1], [1, 2], [2, 0]]], expected: false, hidden: true}
+  hints:
+    - Topological sort. If you can process every node (Kahn's algorithm), there is no cycle.
+  solution: |
+    from collections import defaultdict, deque
+
+    def can_finish(num_courses, prerequisites):
+        adj, indeg = defaultdict(list), [0] * num_courses
+        for a, b in prerequisites:
+            adj[b].append(a)
+            indeg[a] += 1
+        q = deque(i for i in range(num_courses) if indeg[i] == 0)
+        done = 0
+        while q:
+            u = q.popleft()
+            done += 1
+            for v in adj[u]:
+                indeg[v] -= 1
+                if indeg[v] == 0:
+                    q.append(v)
+        return done == num_courses
+  complexity: O(V + E) time and space
+  explain: DFS with three colours (unvisited / visiting / done) is the alternative.
+
+- id: connected-components
+  title: Number of Connected Components
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/
+  fn: count_components
+  statement: |
+    A graph has `n` nodes (`0..n-1`) and an undirected `edges` list. Return the number of connected components.
+
+    ```
+    n = 5, edges = [[0,1],[1,2],[3,4]] -> 2
+    ```
+  starter: |
+    def count_components(n, edges):
+        pass
+  tests:
+    - {args: [5, [[0, 1], [1, 2], [3, 4]]], expected: 2}
+    - {args: [5, [[0, 1], [1, 2], [2, 3], [3, 4]]], expected: 1}
+    - {args: [3, []], expected: 3, hidden: true}
+    - {args: [1, []], expected: 1, hidden: true}
+    - {args: [6, [[0, 1], [2, 3], [4, 5], [1, 2]]], expected: 2, hidden: true}
+  hints:
+    - "Union-Find: start with n components; each successful union reduces the count by one."
+  solution: |
+    def count_components(n, edges):
+        parent = list(range(n))
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+        comps = n
+        for a, b in edges:
+            ra, rb = find(a), find(b)
+            if ra != rb:
+                parent[rb] = ra
+                comps -= 1
+        return comps
+  complexity: O((V + E) · α(V)) time, O(V) space
+  explain: DFS/BFS over an adjacency list is equally valid. Mention both.
+
+- id: valid-tree
+  title: Graph Valid Tree
+  pattern: graphs
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/graph-valid-tree/
+  fn: valid_tree
+  statement: |
+    Given `n` nodes and undirected `edges`, return whether the edges form a valid tree (connected and acyclic).
+
+    ```
+    5, [[0,1],[0,2],[0,3],[1,4]] -> True
+    5, [[0,1],[1,2],[2,3],[1,3],[1,4]] -> False
+    ```
+  starter: |
+    def valid_tree(n, edges):
+        pass
+  tests:
+    - {args: [5, [[0, 1], [0, 2], [0, 3], [1, 4]]], expected: true}
+    - {args: [5, [[0, 1], [1, 2], [2, 3], [1, 3], [1, 4]]], expected: false}
+    - {args: [4, [[0, 1], [2, 3]]], expected: false, hidden: true}
+    - {args: [1, []], expected: true, hidden: true}
+  hints:
+    - A tree on n nodes has exactly n - 1 edges. Then you only need to check there is no cycle (or that it's connected).
+  solution: |
+    def valid_tree(n, edges):
+        if len(edges) != n - 1:
+            return False
+        parent = list(range(n))
+        def find(x):
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]
+                x = parent[x]
+            return x
+        for a, b in edges:
+            ra, rb = find(a), find(b)
+            if ra == rb:
+                return False
+            parent[rb] = ra
+        return True
+  complexity: O(n · α(n)) time
+  explain: The edge-count shortcut is the insight interviewers look for.
+
+- id: word-ladder
+  title: Word Ladder
+  pattern: graphs
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/word-ladder/
+  fn: ladder_length
+  statement: |
+    Transform `begin_word` into `end_word`, changing one letter at a time; each intermediate word must be in `word_list`. Return the number of words in the shortest sequence (including both ends), or `0`.
+
+    ```
+    "hit", "cog", ["hot","dot","dog","lot","log","cog"] -> 5   (hit, hot, dot, dog, cog)
+    ```
+  starter: |
+    def ladder_length(begin_word, end_word, word_list):
+        pass
+  tests:
+    - {args: ["hit", "cog", ["hot", "dot", "dog", "lot", "log", "cog"]], expected: 5}
+    - {args: ["hit", "cog", ["hot", "dot", "dog", "lot", "log"]], expected: 0}
+    - {args: ["a", "c", ["a", "b", "c"]], expected: 2, hidden: true}
+    - {args: ["hot", "dog", ["hot", "dog"]], expected: 0, hidden: true}
+    - {args: ["hit", "hot", ["hot"]], expected: 2, hidden: true}
+  hints:
+    - Words are nodes; two words are adjacent if they differ by one letter. Shortest path means BFS.
+    - Generate neighbours by replacing each position with a-z and checking a set, which is faster than comparing all pairs.
+  solution: |
+    from collections import deque
+
+    def ladder_length(begin_word, end_word, word_list):
+        words = set(word_list)
+        if end_word not in words:
+            return 0
+        q = deque([(begin_word, 1)])
+        seen = {begin_word}
+        while q:
+            w, d = q.popleft()
+            if w == end_word:
+                return d
+            for i in range(len(w)):
+                for ch in "abcdefghijklmnopqrstuvwxyz":
+                    nxt = w[:i] + ch + w[i + 1:]
+                    if nxt in words and nxt not in seen:
+                        seen.add(nxt)
+                        q.append((nxt, d + 1))
+        return 0
+  complexity: O(N · L · 26) time
+  explain: Bidirectional BFS is the follow-up optimisation.
