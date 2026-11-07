@@ -1,0 +1,146 @@
+- id: contains-duplicate
+  title: Contains Duplicate
+  pattern: arrays-hashing
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/contains-duplicate/
+  fn: contains_duplicate
+  statement: |
+    Given an integer list `nums`, return `True` if any value appears **at least twice**, and `False` if every element is distinct.
+
+    **Example**
+
+    ```
+    nums = [1, 2, 3, 1]  ->  True
+    nums = [1, 2, 3, 4]  ->  False
+    ```
+
+    **Constraints:** `1 <= len(nums) <= 10^5`.
+  starter: |
+    def contains_duplicate(nums):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 1]], expected: true}
+    - {args: [[1, 2, 3, 4]], expected: false}
+    - {args: [[1]], expected: false, hidden: true}
+    - {args: [[1, 1, 1, 3, 3, 4, 3, 2, 4, 2]], expected: true, hidden: true}
+    - {args: [[-1, -2, -3, -1]], expected: true, hidden: true}
+    - {args: [[0, 4, 5, 0, 3, 6]], expected: true, hidden: true}
+  hints:
+    - What data structure answers "have I seen this before?" in O(1)?
+    - Or compare the length of the list with the length of set(nums).
+  solution: |
+    def contains_duplicate(nums):
+        seen = set()
+        for x in nums:
+            if x in seen:
+                return True
+            seen.add(x)
+        return False
+  complexity: O(n) time, O(n) space
+  explain: |
+    One-liner alternative: `return len(set(nums)) != len(nums)`. Sorting first gives O(n log n) time and O(1) extra space, which is a trade-off worth mentioning.
+
+- id: two-sum
+  title: Two Sum
+  pattern: arrays-hashing
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/two-sum/
+  fn: two_sum
+  compare: unordered
+  statement: |
+    Given a list `nums` and an integer `target`, return the **indices** of the two numbers that add up to `target`. Exactly one solution exists and you may not use the same element twice. The answer may be in any order.
+
+    **Example**
+
+    ```
+    nums = [2, 7, 11, 15], target = 9  ->  [0, 1]
+    ```
+  starter: |
+    def two_sum(nums, target):
+        pass
+  tests:
+    - {args: [[2, 7, 11, 15], 9], expected: [0, 1]}
+    - {args: [[3, 2, 4], 6], expected: [1, 2]}
+    - {args: [[3, 3], 6], expected: [0, 1]}
+    - {args: [[-1, -2, -3, -4, -5], -8], expected: [2, 4], hidden: true}
+    - {args: [[0, 4, 3, 0], 0], expected: [0, 3], hidden: true}
+  hints:
+    - For each x, you need target - x. Where could you have remembered it?
+    - Store value -> index as you go, and check before inserting.
+  solution: |
+    def two_sum(nums, target):
+        seen = {}
+        for i, x in enumerate(nums):
+            if target - x in seen:
+                return [seen[target - x], i]
+            seen[x] = i
+  complexity: O(n) time, O(n) space
+  explain: |
+    Brute force is O(n²). Checking the map *before* inserting prevents using the same element twice.
+
+- id: valid-anagram
+  title: Valid Anagram
+  pattern: arrays-hashing
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/valid-anagram/
+  fn: is_anagram
+  statement: |
+    Given two strings `s` and `t`, return `True` if `t` is an anagram of `s` (same letters, same counts).
+
+    ```
+    s = "anagram", t = "nagaram"  ->  True
+    s = "rat", t = "car"          ->  False
+    ```
+  starter: |
+    def is_anagram(s, t):
+        pass
+  tests:
+    - {args: ["anagram", "nagaram"], expected: true}
+    - {args: ["rat", "car"], expected: false}
+    - {args: ["a", "ab"], expected: false, hidden: true}
+    - {args: ["", ""], expected: true, hidden: true}
+    - {args: ["aacc", "ccac"], expected: false, hidden: true}
+  hints:
+    - Two strings are anagrams if their letter counts match.
+  solution: |
+    from collections import Counter
+
+    def is_anagram(s, t):
+        return Counter(s) == Counter(t)
+  complexity: O(n) time, O(k) space (k = alphabet size)
+  explain: Sorting both strings also works in O(n log n).
+
+- id: group-anagrams
+  title: Group Anagrams
+  pattern: arrays-hashing
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/group-anagrams/
+  fn: group_anagrams
+  compare: unordered_nested
+  statement: |
+    Group the strings in `strs` so that anagrams are together. Return the groups in any order.
+
+    ```
+    ["eat","tea","tan","ate","nat","bat"] -> [["bat"],["nat","tan"],["ate","eat","tea"]]
+    ```
+  starter: |
+    def group_anagrams(strs):
+        pass
+  tests:
+    - {args: [["eat", "tea", "tan", "ate", "nat", "bat"]], expected: [["bat"], ["nat", "tan"], ["ate", "eat", "tea"]]}
+    - {args: [[""]], expected: [[""]]}
+    - {args: [["a"]], expected: [["a"]]}
+    - {args: [["ab", "ba", "abc"]], expected: [["ab", "ba"], ["abc"]], hidden: true}
+  hints:
+    - What single value is identical for every word in a group?
+    - "tuple(sorted(word)) or ''.join(sorted(word)) works as a key."
+  solution: |
+    from collections import defaultdict
+
+    def group_anagrams(strs):
+        groups = defaultdict(list)
+        for w in strs:
+            groups["".join(sorted(w))].append(w)
+        return list(groups.values())
+  complexity: O(n · k log k) time, O(n · k) space
+  explain: Counting letters (a 26-tuple key) brings each word to O(k).

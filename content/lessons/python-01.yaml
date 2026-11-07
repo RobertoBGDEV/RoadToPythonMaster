@@ -1,0 +1,212 @@
+- id: py-syntax
+  track: python
+  week: 1
+  title: Syntax speedrun for Java developers
+  summary: Everything you'd otherwise learn over a week, compressed into what actually differs from Java.
+  minutes: 12
+  xp: 25
+  sections:
+    - md: |
+        You already know how to program, so skip the "what is a variable" part. Three mental shifts matter:
+
+        1. **Indentation is syntax.** No braces, no semicolons.
+        2. **Everything is an object, and types are dynamic.** Names are labels attached to objects, not typed boxes.
+        3. **Python favours expressive built-ins over ceremony.** One line of slicing replaces a loop.
+
+        Edit any block below and press **Run** (or Ctrl/⌘+Enter).
+    - code: |
+        # No declarations, no semicolons. Types belong to values, not variables.
+        x = 10
+        x = "now a string"          # legal (type hints can document intent)
+        count: int = 0              # optional type hint, not enforced at runtime
+
+        # Truthiness: empty things are falsy
+        for v in [0, "", [], {}, None, 0.0, "a", [0]]:
+            print(repr(v), "->", bool(v))
+      java: |
+        int x = 10;
+        // x = "now a string";   // compile error
+        int count = 0;
+        // if (list != null && !list.isEmpty()) ...   // vs Python: if lst:
+      caption: Dynamic typing and truthiness
+    - code: |
+        # Integer division, floor division, modulo, power. Ints never overflow.
+        print(7 / 2, 7 // 2, -7 // 2, 7 % 3, -7 % 3, 2 ** 100)
+
+        # Chained comparisons
+        age = 30
+        print(18 <= age < 65)
+
+        # Ternary, and/or/not (no && || !)
+        label = "adult" if age >= 18 else "minor"
+        print(label, age > 20 and age < 40, not age)
+      java: |
+        System.out.println(7 / 2);        // 3  (int division)
+        System.out.println(-7 / 2);       // -3 (truncates toward zero)
+        System.out.println(-7 % 3);       // -1 (sign follows dividend)
+        // 2^100 overflows long; you'd need BigInteger
+        String label = age >= 18 ? "adult" : "minor";
+      caption: Numbers and operators. Note floor division and modulo with negatives
+    - md: |
+        > **Interview gotcha:** `-7 // 2` is `-4` in Python (floors toward negative infinity) and `-7 % 3` is `2` (result takes the sign of the divisor). Java truncates toward zero. This bites in binary-search midpoints, modular arithmetic and circular buffers.
+    - code: |
+        s = "hello world"
+        print(s[0], s[-1], s[0:5], s[::-1], s[::2])   # indexing & slicing: start:stop:step
+        print(s.upper(), s.split(), "-".join(["a", "b", "c"]))
+        name, n = "Ada", 3
+        print(f"{name} has {n * 2} items, pi~{3.14159:.2f}, padded:{n:>4}")
+
+        # Strings are immutable; build with join, not +=
+        parts = []
+        for i in range(5):
+            parts.append(str(i))
+        print("".join(parts))
+      java: |
+        s.charAt(0); s.charAt(s.length() - 1); s.substring(0, 5);
+        new StringBuilder(s).reverse().toString();
+        String.format("%s has %d items", name, n * 2);
+      caption: Strings and slicing
+    - code: |
+        # Unpacking, swapping, enumerate, zip: the idioms interviewers expect
+        a, b = 1, 2
+        a, b = b, a                     # swap without a temp
+        first, *rest = [10, 20, 30, 40]
+        print(a, b, first, rest)
+
+        for i, ch in enumerate("abc"):
+            print(i, ch, end=" | ")
+        print()
+        for x, y in zip([1, 2, 3], "xyz"):
+            print(x, y, end=" | ")
+        print()
+
+        # range(start, stop, step): stop is exclusive
+        print(list(range(5)), list(range(2, 10, 3)), list(range(5, 0, -1)))
+      java: |
+        int tmp = a; a = b; b = tmp;
+        for (int i = 0; i < s.length(); i++) { char ch = s.charAt(i); ... }
+      caption: Loops and unpacking
+    - code: |
+        # Functions: default args, keyword args, *args/**kwargs, multiple returns
+        def stats(nums, scale=1, *, round_to=2):
+            total = sum(nums) * scale
+            return total, round(total / len(nums), round_to)   # returns a tuple
+
+        total, avg = stats([1, 2, 4], scale=2, round_to=1)
+        print(total, avg)
+
+        # DANGER: mutable default arguments are created once!
+        def bad(item, bucket=[]):
+            bucket.append(item)
+            return bucket
+        print(bad(1), bad(2))   # [1] then [1, 2]
+      caption: Functions, and the mutable-default trap
+    - md: |
+        ### Cheat sheet
+
+        | Java | Python |
+        |---|---|
+        | `null` | `None` (compare with `is None`) |
+        | `==` for values, `.equals` | `==` values, `is` identity |
+        | `&& \|\| !` | `and or not` |
+        | `i++` | `i += 1` (no `++`) |
+        | `for (int i=0;i<n;i++)` | `for i in range(n)` |
+        | `static` main | `if __name__ == "__main__":` |
+  quiz:
+    - q: What does `-7 // 2` evaluate to in Python?
+      options: ["-3", "-4", "3", "-3.5"]
+      answer: 1
+      why: Floor division rounds toward negative infinity, so -3.5 becomes -4. Java would give -3.
+    - q: What is `bool([0])`?
+      options: ["False", "True", "Error"]
+      answer: 1
+      why: A non-empty list is truthy regardless of its contents.
+    - q: Why is `def f(x, acc=[])` dangerous?
+      options: ["Lists are immutable", "The default list is created once and shared across calls", "Python forbids it", "It copies the list on every call"]
+      answer: 1
+      why: Defaults are evaluated once at function definition. Use `acc=None` and create the list inside.
+
+- id: py-collections
+  track: python
+  week: 1
+  title: Collections you'll use in every interview
+  summary: list, dict, set, tuple, Counter, defaultdict, deque, heapq. Their costs and their Java equivalents.
+  minutes: 15
+  xp: 30
+  requires: [py-syntax]
+  sections:
+    - md: |
+        Know these cold. 90% of interview solutions are built from them.
+
+        | Python | Java equivalent | Notes |
+        |---|---|---|
+        | `list` | `ArrayList` | O(1) append/index, O(n) insert/pop front |
+        | `dict` | `HashMap` (insertion-ordered like `LinkedHashMap`) | O(1) average |
+        | `set` | `HashSet` | O(1) average membership |
+        | `tuple` | immutable record-ish | hashable, usable as dict key |
+        | `collections.deque` | `ArrayDeque` | O(1) both ends: use for queues/BFS |
+        | `heapq` | `PriorityQueue` | **min**-heap only, operates on a plain list |
+        | `Counter` | `Map<T,Integer>` with merge | counting in one line |
+        | `defaultdict` | `computeIfAbsent` | auto-creates missing values |
+    - code: |
+        from collections import Counter, defaultdict, deque
+        import heapq
+
+        nums = [3, 1, 3, 2, 3, 1]
+        c = Counter(nums)
+        print(c, c.most_common(1), c[99])        # missing key -> 0, no KeyError
+
+        groups = defaultdict(list)
+        for w in ["eat", "tea", "tan", "ate", "nat"]:
+            groups["".join(sorted(w))].append(w)
+        print(dict(groups))
+
+        d = {"a": 1}
+        d["b"] = d.get("b", 0) + 5               # get with default
+        d.setdefault("c", []).append(1)
+        print(d, "a" in d, list(d.items()))
+
+        q = deque([1, 2, 3])
+        q.appendleft(0); q.append(4); print(q.popleft(), q.pop(), q)
+
+        h = []
+        for x in [5, 1, 8, 3]:
+            heapq.heappush(h, x)
+        print(heapq.heappop(h), h[0], heapq.nlargest(2, [5, 1, 8, 3]))
+        # max-heap trick: push negatives
+      java: |
+        Map<Integer,Integer> c = new HashMap<>();
+        for (int n : nums) c.merge(n, 1, Integer::sum);
+        Map<String,List<String>> g = new HashMap<>();
+        g.computeIfAbsent(key, k -> new ArrayList<>()).add(w);
+        PriorityQueue<Integer> h = new PriorityQueue<>();
+      caption: The toolbox in action
+    - code: |
+        # Sets: dedupe and fast membership; set algebra replaces nested loops
+        a, b = {1, 2, 3, 4}, {3, 4, 5}
+        print(a & b, a | b, a - b, a ^ b)
+
+        # Sorting: key functions replace Comparator boilerplate
+        people = [("bob", 25), ("alice", 30), ("carol", 25)]
+        print(sorted(people, key=lambda p: (p[1], p[0])))
+        print(sorted([3, 1, 2], reverse=True), max(people, key=lambda p: p[1]))
+
+        # Tuples are hashable: perfect for coordinates / visited sets
+        seen = {(0, 0), (0, 1)}
+        print((0, 1) in seen)
+      caption: Sets, sorting and tuple keys
+    - md: |
+        ### Costs to quote in interviews
+        - `x in list` is **O(n)**; `x in set` / `x in dict` is **O(1)** average. Turning a list into a set is the most common optimisation.
+        - `list.pop(0)` and `list.insert(0, x)` are **O(n)**. Use `deque`.
+        - `s += c` in a loop is O(n²) for strings in the worst case. Collect in a list and `"".join`.
+        - Slicing `a[i:j]` **copies** (O(j-i)).
+  quiz:
+    - q: Which structure gives O(1) removal from the front?
+      options: ["list", "deque", "tuple", "set"]
+      answer: 1
+      why: list.pop(0) shifts every element (O(n)); deque.popleft() is O(1).
+    - q: How do you get a max-heap from heapq?
+      options: ["heapq.maxheap()", "Push negated values", "Pass reverse=True", "It's the default"]
+      answer: 1
+      why: heapq is min-heap only. Negate numbers (or wrap items) to simulate a max-heap.

@@ -1,0 +1,53 @@
+- id: arrays-hashing
+  track: algo
+  week: 1
+  title: Arrays & Hashing
+  summary: Trade memory for time. A hash map turns "search for the partner" from O(n) into O(1).
+  minutes: 10
+  xp: 25
+  requires: [py-collections]
+  sections:
+    - md: |
+        ## The core idea
+        Whenever you catch yourself writing a nested loop to *look something up*, ask: **can I remember what I've seen in a dict/set instead?**
+
+        Typical signals in a statement: *duplicates, pairs that sum to, anagram, frequency, group by, first unique, subarray sum equals k.*
+
+        **Recipe**
+        1. Decide what the key is (the value? a sorted word? a prefix sum?).
+        2. Decide what to store (index? count? list?).
+        3. One pass: check the map for what you need, then insert the current element.
+    - code: |
+        def has_pair_with_sum(nums, target):
+            seen = set()
+            for x in nums:
+                if target - x in seen:   # the partner was seen earlier
+                    return True
+                seen.add(x)
+            return False
+
+        print(has_pair_with_sum([2, 7, 11, 15], 9), has_pair_with_sum([1, 2], 10))
+      caption: The one-pass complement pattern
+  template: |
+    # One-pass lookup
+    seen = {}                       # value -> index (or count)
+    for i, x in enumerate(nums):
+        need = target - x
+        if need in seen:
+            return [seen[need], i]
+        seen[x] = i
+
+    # Frequency map
+    from collections import Counter
+    freq = Counter(items)
+
+    # Group by canonical key
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for w in words:
+        groups[key_of(w)].append(w)
+  quiz:
+    - q: Two Sum with a hash map runs in…
+      options: ["O(n²) time", "O(n) time, O(n) space", "O(n log n) time, O(1) space", "O(1)"]
+      answer: 1
+      why: One pass with O(1) average lookups; the map can hold up to n entries.
