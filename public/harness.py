@@ -68,7 +68,7 @@ def from_tree(root):
     return out
 
 
-TO = {"listnode": to_list_node, "tree": to_tree}
+TO = {"listnode": to_list_node, "tree": to_tree, "listnodes": lambda arr: [to_list_node(x) for x in arr]}
 FROM = {"listnode": from_list_node, "tree": from_tree}
 
 
@@ -83,6 +83,8 @@ def _nested(v):
 
 
 def _equal(actual, expected, mode):
+    if actual is None or expected is None:
+        return actual is expected
     if mode == "unordered":
         try:
             return sorted(actual, key=_key) == sorted(expected, key=_key)

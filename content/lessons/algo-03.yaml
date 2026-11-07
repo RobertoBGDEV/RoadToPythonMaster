@@ -1,0 +1,241 @@
+- id: linked-list
+  track: algo
+  week: 4
+  title: Linked Lists
+  summary: Pointer surgery. Dummy heads, fast/slow pointers and in-place reversal cover nearly everything.
+  minutes: 10
+  xp: 25
+  requires: [two-pointers]
+  sections:
+    - md: |
+        In the test runner, `ListNode(val, next)` is predefined and inputs arrive as nodes; you return a head node. (On LeetCode it's identical.)
+
+        Three tools:
+        1. **Dummy head:** `dummy = ListNode(0, head)` removes "what if the head changes?" special cases.
+        2. **Fast/slow pointers:** middle of the list, cycle detection (Floyd), k-th from end.
+        3. **Reverse in place:** `prev, cur = None, head` and flip `cur.next`.
+    - code: |
+        class ListNode:
+            def __init__(self, val=0, next=None):
+                self.val, self.next = val, next
+
+        def build(a):
+            head = None
+            for v in reversed(a):
+                head = ListNode(v, head)
+            return head
+
+        def to_list(h):
+            out = []
+            while h:
+                out.append(h.val); h = h.next
+            return out
+
+        def reverse(head):
+            prev = None
+            while head:
+                head.next, prev, head = prev, head, head.next   # one-line rotate
+            return prev
+
+        print(to_list(reverse(build([1, 2, 3, 4]))))
+
+        # Floyd cycle detection
+        a, b, c = ListNode(1), ListNode(2), ListNode(3)
+        a.next, b.next, c.next = b, c, b       # c points back to b: cycle
+        slow = fast = a
+        while fast and fast.next:
+            slow, fast = slow.next, fast.next.next
+            if slow is fast:
+                print("cycle detected"); break
+      caption: Reverse in place, plus Floyd's cycle detection
+  template: |
+    dummy = ListNode(0, head)
+    cur = dummy
+
+    # fast / slow
+    slow = fast = head
+    while fast and fast.next:
+        slow, fast = slow.next, fast.next.next   # slow ends at the middle
+
+    # reverse
+    prev, cur = None, head
+    while cur:
+        nxt = cur.next
+        cur.next = prev
+        prev, cur = cur, nxt
+  quiz:
+    - q: Why use a dummy head node?
+      options: ["Speed", "So inserting/removing at the head needs no special case", "Python requires it", "To avoid recursion"]
+      answer: 1
+      why: dummy.next is always the real head, so every node has a predecessor.
+
+- id: trees
+  track: algo
+  week: 5
+  title: Binary Trees (DFS & BFS)
+  summary: Recursion on structure. Define what a call returns, then combine children's answers.
+  minutes: 12
+  xp: 30
+  requires: [stack]
+  sections:
+    - md: |
+        Inputs arrive as `TreeNode(val, left, right)`. Two traversal families:
+
+        - **DFS (recursion):** *"what does `f(node)` return for the subtree?"* then combine `f(left)` and `f(right)`. Height, diameter, validate-BST, path sums.
+        - **BFS (queue):** level-by-level problems: level order, right side view, shortest path in unweighted structures.
+
+        Two ways to carry information: **return values up** (height, sum) or **pass constraints down** (BST valid range, max-so-far).
+    - code: |
+        from collections import deque
+
+        class TreeNode:
+            def __init__(self, val=0, left=None, right=None):
+                self.val, self.left, self.right = val, left, right
+
+        root = TreeNode(1, TreeNode(2, TreeNode(4)), TreeNode(3))
+
+        def height(n):                       # return values UP
+            return 0 if not n else 1 + max(height(n.left), height(n.right))
+
+        def levels(root):                    # BFS with level size
+            out, q = [], deque([root] if root else [])
+            while q:
+                out.append([n.val for n in q])
+                for _ in range(len(q)):
+                    n = q.popleft()
+                    q.extend(c for c in (n.left, n.right) if c)
+            return out
+
+        print(height(root), levels(root))
+      caption: DFS returning up, BFS by level
+    - md: |
+        > **Python recursion limit** is ~1000 frames. A skewed tree of 10⁵ nodes will overflow; mention an iterative version or `sys.setrecursionlimit` if the constraints are large.
+  template: |
+    def dfs(node):
+        if not node:
+            return BASE
+        L, R = dfs(node.left), dfs(node.right)
+        # (optional) update a nonlocal answer using L and R
+        return combine(L, R, node.val)
+
+    def dfs_down(node, lo, hi):          # constraints passed DOWN
+        if not node: return True
+        if not (lo < node.val < hi): return False
+        return dfs_down(node.left, lo, node.val) and dfs_down(node.right, node.val, hi)
+  quiz:
+    - q: "Validate-BST: which approach is correct?"
+      options: ["Compare each node only with its children", "Pass (low, high) bounds down the recursion", "BFS only", "Sort the tree"]
+      answer: 1
+      why: A node must respect ALL ancestors' bounds, not just its parent's.
+
+- id: tries
+  track: algo
+  week: 5
+  title: Tries
+  summary: "A prefix tree: O(length) insert/search, and prefix queries for free."
+  minutes: 6
+  xp: 20
+  requires: [trees]
+  sections:
+    - md: |
+        Use a trie when a problem talks about **prefixes**, autocomplete, or searching many words with wildcards.
+        Each node is a dict of children plus an `end` flag.
+    - code: |
+        class Trie:
+            def __init__(self):
+                self.root = {}
+            def insert(self, w):
+                node = self.root
+                for ch in w:
+                    node = node.setdefault(ch, {})
+                node["$"] = True            # end marker
+            def starts_with(self, p):
+                node = self.root
+                for ch in p:
+                    if ch not in node: return False
+                    node = node[ch]
+                return True
+
+        t = Trie(); t.insert("apple")
+        print(t.starts_with("app"), t.starts_with("apx"))
+      caption: Dict-of-dicts trie
+  quiz:
+    - q: Insert/search a word of length L in a trie costs…
+      options: ["O(1)", "O(L)", "O(n)", "O(n·L)"]
+      answer: 1
+      why: One step per character, independent of how many words are stored.
+
+- id: heap
+  track: algo
+  week: 6
+  title: Heaps & Priority Queues
+  summary: Repeatedly need the min/max? Top-K? Merge sorted streams? Reach for heapq.
+  minutes: 8
+  xp: 25
+  requires: [py-collections]
+  sections:
+    - md: |
+        `heapq` is a **min-heap on a list**. `heappush`, `heappop` are O(log n); `heap[0]` peeks O(1); `heapify(list)` is O(n).
+
+        - **Top K largest:** keep a *min*-heap of size k. Pop when it grows past k. O(n log k).
+        - **Max-heap:** push `-x`.
+        - **Tuples order lexicographically:** `(priority, tie_breaker, item)`; add a counter if items aren't comparable.
+        - **Two heaps** (a max-heap of the lower half and a min-heap of the upper half) give a running median.
+    - code: |
+        import heapq
+
+        def top_k(nums, k):
+            h = []
+            for x in nums:
+                heapq.heappush(h, x)
+                if len(h) > k:
+                    heapq.heappop(h)         # drop the smallest
+            return sorted(h, reverse=True)
+
+        print(top_k([5, 1, 9, 3, 7, 8], 3))
+        print(heapq.nlargest(3, [5, 1, 9, 3, 7, 8]), heapq.nsmallest(2, [5, 1, 9]))
+        # merge sorted streams lazily
+        print(list(heapq.merge([1, 4, 7], [2, 5, 8])))
+      caption: Top-K with a bounded min-heap
+  quiz:
+    - q: To keep the K largest items, which heap do you maintain?
+      options: ["Max-heap of size n", "Min-heap of size k", "Max-heap of size k", "Sorted list"]
+      answer: 1
+      why: The smallest of your current K sits on top. If a new item beats it, replace it.
+
+- id: intervals
+  track: algo
+  week: 6
+  title: Intervals
+  summary: Sort by start (or end), then sweep. Overlap is `a.start < b.end`.
+  minutes: 6
+  xp: 20
+  requires: [py-collections]
+  sections:
+    - md: |
+        1. **Sort** by start for merging; by **end** for "max non-overlapping" (greedy).
+        2. **Overlap test** for sorted-by-start: `cur.start <= last.end` (touching counts as overlap for merging; use `<` when touching is allowed).
+        3. **Count concurrent** (meeting rooms): sweep line over start/end events, or a min-heap of end times.
+    - code: |
+        def merge(intervals):
+            out = []
+            for s, e in sorted(intervals):
+                if out and s <= out[-1][1]:
+                    out[-1][1] = max(out[-1][1], e)
+                else:
+                    out.append([s, e])
+            return out
+
+        print(merge([[1, 3], [2, 6], [8, 10]]))
+      caption: Sort, then merge into the last interval
+  template: |
+    intervals.sort()                       # by start
+    out = [intervals[0]]
+    for s, e in intervals[1:]:
+        if s <= out[-1][1]: out[-1][1] = max(out[-1][1], e)
+        else:               out.append([s, e])
+  quiz:
+    - q: "Max number of non-overlapping intervals: sort by\u2026"
+      options: ["start", "end", "length", "random"]
+      answer: 1
+      why: Always keep the interval that finishes earliest. It leaves the most room for the rest.

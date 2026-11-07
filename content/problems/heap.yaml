@@ -1,0 +1,201 @@
+- id: kth-largest
+  title: Kth Largest Element in an Array
+  pattern: heap
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/kth-largest-element-in-an-array/
+  fn: find_kth_largest
+  statement: |
+    Return the `k`-th largest element of `nums` (the k-th in sorted *descending* order, duplicates counted).
+
+    ```
+    [3,2,1,5,6,4], k = 2 -> 5
+    [3,2,3,1,2,4,5,5,6], k = 4 -> 4
+    ```
+  starter: |
+    def find_kth_largest(nums, k):
+        pass
+  tests:
+    - {args: [[3, 2, 1, 5, 6, 4], 2], expected: 5}
+    - {args: [[3, 2, 3, 1, 2, 4, 5, 5, 6], 4], expected: 4}
+    - {args: [[1], 1], expected: 1, hidden: true}
+    - {args: [[7, 7, 7], 2], expected: 7, hidden: true}
+    - {args: [[-1, -5, -3], 3], expected: -5, hidden: true}
+  hints:
+    - Keep a min-heap of the k largest values seen. Its top is the answer.
+  solution: |
+    import heapq
+
+    def find_kth_largest(nums, k):
+        h = []
+        for x in nums:
+            heapq.heappush(h, x)
+            if len(h) > k:
+                heapq.heappop(h)
+        return h[0]
+  complexity: O(n log k) time, O(k) space
+  explain: Quickselect is O(n) average and is the follow-up.
+
+- id: last-stone-weight
+  title: Last Stone Weight
+  pattern: heap
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/last-stone-weight/
+  fn: last_stone_weight
+  statement: |
+    Repeatedly smash the two heaviest stones. If weights are equal both are destroyed; otherwise the lighter is destroyed and the heavier loses that much weight. Return the weight of the last stone (or `0`).
+
+    ```
+    [2,7,4,1,8,1] -> 1
+    ```
+  starter: |
+    def last_stone_weight(stones):
+        pass
+  tests:
+    - {args: [[2, 7, 4, 1, 8, 1]], expected: 1}
+    - {args: [[1]], expected: 1}
+    - {args: [[2, 2]], expected: 0}
+    - {args: [[10, 4, 2, 10]], expected: 2, hidden: true}
+  hints:
+    - You need the two largest repeatedly: a max-heap (negate the values).
+  solution: |
+    import heapq
+
+    def last_stone_weight(stones):
+        h = [-s for s in stones]
+        heapq.heapify(h)
+        while len(h) > 1:
+            a, b = -heapq.heappop(h), -heapq.heappop(h)
+            if a != b:
+                heapq.heappush(h, -(a - b))
+        return -h[0] if h else 0
+  complexity: O(n log n) time, O(n) space
+  explain: The classic negate-for-max-heap trick.
+
+- id: k-closest-points
+  title: K Closest Points to Origin
+  pattern: heap
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/k-closest-points-to-origin/
+  fn: k_closest
+  compare: unordered
+  statement: |
+    Return the `k` points closest (Euclidean distance) to `(0, 0)`, in any order.
+
+    ```
+    points = [[3,3],[5,-1],[-2,4]], k = 2 -> [[3,3],[-2,4]]
+    ```
+  starter: |
+    def k_closest(points, k):
+        pass
+  tests:
+    - {args: [[[1, 3], [-2, 2]], 1], expected: [[-2, 2]]}
+    - {args: [[[3, 3], [5, -1], [-2, 4]], 2], expected: [[3, 3], [-2, 4]]}
+    - {args: [[[0, 1], [1, 0]], 2], expected: [[0, 1], [1, 0]], hidden: true}
+    - {args: [[[2, 2], [1, 1], [3, 3], [0, 0]], 2], expected: [[0, 0], [1, 1]], hidden: true}
+  hints:
+    - Compare squared distances; no square root needed.
+    - heapq.nsmallest(k, points, key=...) does it in one line.
+  solution: |
+    import heapq
+
+    def k_closest(points, k):
+        return heapq.nsmallest(k, points, key=lambda p: p[0] ** 2 + p[1] ** 2)
+  complexity: O(n log k) time, O(k) space
+  explain: Say the manual version too - a max-heap of size k with negated distances.
+
+- id: task-scheduler
+  title: Task Scheduler
+  pattern: heap
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/task-scheduler/
+  fn: least_interval
+  statement: |
+    Each task (a letter) takes one unit. The same task must be separated by at least `n` units of cooldown (you may idle). Return the minimum number of units to finish all tasks.
+
+    ```
+    tasks = ["A","A","A","B","B","B"], n = 2 -> 8     (A B _ A B _ A B)
+    ```
+  starter: |
+    def least_interval(tasks, n):
+        pass
+  tests:
+    - {args: [["A", "A", "A", "B", "B", "B"], 2], expected: 8}
+    - {args: [["A", "A", "A", "B", "B", "B"], 0], expected: 6}
+    - {args: [["A", "A", "A", "A", "A", "A", "B", "C", "D", "E", "F", "G"], 2], expected: 16}
+    - {args: [["A", "B"], 3], expected: 2, hidden: true}
+    - {args: [["A", "A", "B"], 2], expected: 4, hidden: true}
+  hints:
+    - The most frequent task dictates the skeleton of frames of size n+1.
+    - Simulate with a max-heap, or derive a formula using the max count and how many tasks tie for it.
+  solution: |
+    from collections import Counter
+
+    def least_interval(tasks, n):
+        cnt = Counter(tasks)
+        mx = max(cnt.values())
+        ties = sum(1 for v in cnt.values() if v == mx)
+        return max(len(tasks), (mx - 1) * (n + 1) + ties)
+  complexity: O(n) time, O(1) space
+  explain: Frames of length n+1 for the first mx-1 repetitions, plus a final row of `ties` tasks. If tasks overflow the frames there are no idles, so the answer is len(tasks).
+
+- id: median-stream
+  title: Find Median from Data Stream
+  pattern: heap
+  difficulty: hard
+  kind: design
+  className: MedianFinder
+  compare: float
+  leetcode: https://leetcode.com/problems/find-median-from-data-stream/
+  statement: |
+    Implement `MedianFinder` with `add_num(num)` and `find_median()` returning the median of everything added so far (a float).
+
+    ```
+    add_num(1); add_num(2); find_median() -> 1.5; add_num(3); find_median() -> 2.0
+    ```
+  starter: |
+    class MedianFinder:
+        def __init__(self):
+            pass
+
+        def add_num(self, num):
+            pass
+
+        def find_median(self):
+            pass
+  tests:
+    - ops: [MedianFinder, add_num, add_num, find_median, add_num, find_median]
+      args: [[], [1], [2], [], [3], []]
+      expected: [null, null, null, 1.5, null, 2.0]
+    - ops: [MedianFinder, add_num, find_median]
+      args: [[], [5], []]
+      expected: [null, null, 5.0]
+    - ops: [MedianFinder, add_num, add_num, add_num, find_median, add_num, find_median]
+      args: [[], [5], [3], [8], [], [1], []]
+      expected: [null, null, null, null, 5.0, null, 4.0]
+      hidden: true
+    - ops: [MedianFinder, add_num, add_num, add_num, add_num, find_median]
+      args: [[], [-1], [-2], [-3], [-4], []]
+      expected: [null, null, null, null, null, -2.5]
+      hidden: true
+  hints:
+    - Keep the lower half in a max-heap and the upper half in a min-heap, sizes differing by at most 1.
+  solution: |
+    import heapq
+
+    class MedianFinder:
+        def __init__(self):
+            self.lo = []   # max-heap (negated)
+            self.hi = []   # min-heap
+
+        def add_num(self, num):
+            heapq.heappush(self.lo, -num)
+            heapq.heappush(self.hi, -heapq.heappop(self.lo))
+            if len(self.hi) > len(self.lo):
+                heapq.heappush(self.lo, -heapq.heappop(self.hi))
+
+        def find_median(self):
+            if len(self.lo) > len(self.hi):
+                return float(-self.lo[0])
+            return (-self.lo[0] + self.hi[0]) / 2
+  complexity: O(log n) add, O(1) median
+  explain: Push through the other heap first to keep the halves correctly partitioned, then rebalance by size.

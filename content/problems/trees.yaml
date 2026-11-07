@@ -1,0 +1,455 @@
+- id: invert-tree
+  title: Invert Binary Tree
+  pattern: trees
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/invert-binary-tree/
+  fn: invert_tree
+  argTypes: [tree]
+  retType: tree
+  statement: |
+    Mirror a binary tree (swap left and right at every node) and return its root. Trees are given as level-order lists with `None` for missing nodes. `TreeNode(val, left, right)` is predefined.
+
+    ```
+    [4,2,7,1,3,6,9] -> [4,7,2,9,6,3,1]
+    ```
+  starter: |
+    # TreeNode is predefined: TreeNode(val=0, left=None, right=None)
+    def invert_tree(root):
+        pass
+  tests:
+    - {args: [[4, 2, 7, 1, 3, 6, 9]], expected: [4, 7, 2, 9, 6, 3, 1]}
+    - {args: [[2, 1, 3]], expected: [2, 3, 1]}
+    - {args: [[]], expected: []}
+    - {args: [[1, 2]], expected: [1, null, 2], hidden: true}
+  hints:
+    - Invert both subtrees, then swap them.
+  solution: |
+    def invert_tree(root):
+        if not root:
+            return None
+        root.left, root.right = invert_tree(root.right), invert_tree(root.left)
+        return root
+  complexity: O(n) time, O(h) space
+  explain: Tuple assignment swaps without a temp.
+
+- id: max-depth
+  title: Maximum Depth of Binary Tree
+  pattern: trees
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/maximum-depth-of-binary-tree/
+  fn: max_depth
+  argTypes: [tree]
+  statement: |
+    Return the number of nodes on the longest root-to-leaf path.
+
+    ```
+    [3,9,20,null,null,15,7] -> 3
+    ```
+  starter: |
+    def max_depth(root):
+        pass
+  tests:
+    - {args: [[3, 9, 20, null, null, 15, 7]], expected: 3}
+    - {args: [[1, null, 2]], expected: 2}
+    - {args: [[]], expected: 0}
+    - {args: [[1]], expected: 1, hidden: true}
+  hints:
+    - Depth of a node = 1 + max(depth of children). Empty tree = 0.
+  solution: |
+    def max_depth(root):
+        if not root:
+            return 0
+        return 1 + max(max_depth(root.left), max_depth(root.right))
+  complexity: O(n) time, O(h) space
+  explain: The simplest "return values up" recursion.
+
+- id: same-tree
+  title: Same Tree
+  pattern: trees
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/same-tree/
+  fn: is_same_tree
+  argTypes: [tree, tree]
+  statement: |
+    Return whether two binary trees are structurally identical with equal node values.
+
+    ```
+    [1,2,3] vs [1,2,3] -> True        [1,2] vs [1,null,2] -> False
+    ```
+  starter: |
+    def is_same_tree(p, q):
+        pass
+  tests:
+    - {args: [[1, 2, 3], [1, 2, 3]], expected: true}
+    - {args: [[1, 2], [1, null, 2]], expected: false}
+    - {args: [[1, 2, 1], [1, 1, 2]], expected: false}
+    - {args: [[], []], expected: true, hidden: true}
+    - {args: [[1], []], expected: false, hidden: true}
+  hints:
+    - Both empty -> equal. One empty -> not equal. Otherwise compare values and recurse on both sides.
+  solution: |
+    def is_same_tree(p, q):
+        if not p and not q:
+            return True
+        if not p or not q or p.val != q.val:
+            return False
+        return is_same_tree(p.left, q.left) and is_same_tree(p.right, q.right)
+  complexity: O(n) time, O(h) space
+  explain: Order the base cases from "both None" to "exactly one None" to avoid attribute errors.
+
+- id: level-order
+  title: Binary Tree Level Order Traversal
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/binary-tree-level-order-traversal/
+  fn: level_order
+  argTypes: [tree]
+  statement: |
+    Return the node values level by level, left to right.
+
+    ```
+    [3,9,20,null,null,15,7] -> [[3],[9,20],[15,7]]
+    ```
+  starter: |
+    def level_order(root):
+        pass
+  tests:
+    - {args: [[3, 9, 20, null, null, 15, 7]], expected: [[3], [9, 20], [15, 7]]}
+    - {args: [[1]], expected: [[1]]}
+    - {args: [[]], expected: []}
+    - {args: [[1, 2, 3, 4, null, null, 5]], expected: [[1], [2, 3], [4, 5]], hidden: true}
+  hints:
+    - Use a deque. For each level, process exactly len(queue) nodes.
+  solution: |
+    from collections import deque
+
+    def level_order(root):
+        out = []
+        q = deque([root] if root else [])
+        while q:
+            level = []
+            for _ in range(len(q)):
+                n = q.popleft()
+                level.append(n.val)
+                if n.left:
+                    q.append(n.left)
+                if n.right:
+                    q.append(n.right)
+            out.append(level)
+        return out
+  complexity: O(n) time, O(w) space
+  explain: Snapshotting `len(q)` at the start of each level is the trick that separates the levels.
+
+- id: validate-bst
+  title: Validate Binary Search Tree
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/validate-binary-search-tree/
+  fn: is_valid_bst
+  argTypes: [tree]
+  statement: |
+    Return whether the tree is a valid BST: for every node, all values in its left subtree are **strictly less** and all values in its right subtree are **strictly greater**.
+
+    ```
+    [2,1,3] -> True        [5,1,4,null,null,3,6] -> False
+    ```
+  starter: |
+    def is_valid_bst(root):
+        pass
+  tests:
+    - {args: [[2, 1, 3]], expected: true}
+    - {args: [[5, 1, 4, null, null, 3, 6]], expected: false}
+    - {args: [[5, 4, 6, null, null, 3, 7]], expected: false}
+    - {args: [[1]], expected: true, hidden: true}
+    - {args: [[2, 2, 2]], expected: false, hidden: true}
+    - {args: [[]], expected: true, hidden: true}
+  hints:
+    - Comparing a node with only its children misses violations deeper in the tree.
+    - Pass the allowed (low, high) range down.
+  solution: |
+    def is_valid_bst(root):
+        def ok(n, lo, hi):
+            if not n:
+                return True
+            if not (lo < n.val < hi):
+                return False
+            return ok(n.left, lo, n.val) and ok(n.right, n.val, hi)
+        return ok(root, float("-inf"), float("inf"))
+  complexity: O(n) time, O(h) space
+  explain: An in-order traversal must be strictly increasing, which is an equivalent check.
+
+- id: lca-bst
+  title: Lowest Common Ancestor of a BST
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-search-tree/
+  fn: lca_bst
+  argTypes: [tree, null, null]
+  statement: |
+    In a BST (all values distinct), return the **value** of the lowest common ancestor of the nodes with values `p` and `q` (a node may be its own ancestor).
+
+    ```
+    root = [6,2,8,0,4,7,9,null,null,3,5], p = 2, q = 8 -> 6
+    p = 2, q = 4 -> 2
+    ```
+  starter: |
+    def lca_bst(root, p, q):
+        pass
+  tests:
+    - {args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 2, 8], expected: 6}
+    - {args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 2, 4], expected: 2}
+    - {args: [[2, 1], 2, 1], expected: 2}
+    - {args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 3, 5], expected: 4, hidden: true}
+    - {args: [[6, 2, 8, 0, 4, 7, 9, null, null, 3, 5], 7, 9], expected: 8, hidden: true}
+  hints:
+    - If both values are smaller than the node, go left; if both larger, go right. Otherwise this node splits them.
+  solution: |
+    def lca_bst(root, p, q):
+        cur = root
+        while cur:
+            if p < cur.val and q < cur.val:
+                cur = cur.left
+            elif p > cur.val and q > cur.val:
+                cur = cur.right
+            else:
+                return cur.val
+  complexity: O(h) time, O(1) space
+  explain: The BST ordering makes this iterative with no extra space.
+
+- id: kth-smallest-bst
+  title: Kth Smallest Element in a BST
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/kth-smallest-element-in-a-bst/
+  fn: kth_smallest
+  argTypes: [tree, null]
+  statement: |
+    Return the `k`-th smallest value (1-indexed) in a BST.
+
+    ```
+    [3,1,4,null,2], k = 1 -> 1
+    [5,3,6,2,4,null,null,1], k = 3 -> 3
+    ```
+  starter: |
+    def kth_smallest(root, k):
+        pass
+  tests:
+    - {args: [[3, 1, 4, null, 2], 1], expected: 1}
+    - {args: [[5, 3, 6, 2, 4, null, null, 1], 3], expected: 3}
+    - {args: [[1], 1], expected: 1, hidden: true}
+    - {args: [[5, 3, 6, 2, 4, null, null, 1], 6], expected: 6, hidden: true}
+  hints:
+    - In-order traversal of a BST visits values in ascending order. Stop at the k-th.
+  solution: |
+    def kth_smallest(root, k):
+        st, cur = [], root
+        while st or cur:
+            while cur:
+                st.append(cur)
+                cur = cur.left
+            cur = st.pop()
+            k -= 1
+            if k == 0:
+                return cur.val
+            cur = cur.right
+  complexity: O(h + k) time, O(h) space
+  explain: Iterative in-order lets you stop early and avoids recursion limits.
+
+- id: diameter-tree
+  title: Diameter of Binary Tree
+  pattern: trees
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/diameter-of-binary-tree/
+  fn: diameter_of_binary_tree
+  argTypes: [tree]
+  statement: |
+    The diameter is the length (in **edges**) of the longest path between any two nodes. The path may or may not pass through the root.
+
+    ```
+    [1,2,3,4,5] -> 3
+    ```
+  starter: |
+    def diameter_of_binary_tree(root):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4, 5]], expected: 3}
+    - {args: [[1, 2]], expected: 1}
+    - {args: [[1]], expected: 0, hidden: true}
+    - {args: [[1, 2, null, 3, null, 4]], expected: 3, hidden: true}
+    - {args: [[]], expected: 0, hidden: true}
+  hints:
+    - At each node, the best path through it is height(left) + height(right).
+    - Compute heights recursively and update a global best on the way up.
+  solution: |
+    def diameter_of_binary_tree(root):
+        best = 0
+        def height(n):
+            nonlocal best
+            if not n:
+                return 0
+            l, r = height(n.left), height(n.right)
+            best = max(best, l + r)
+            return 1 + max(l, r)
+        height(root)
+        return best
+  complexity: O(n) time, O(h) space
+  explain: This is the template for "return one thing up, track another in a nonlocal" problems (also max path sum).
+
+- id: right-side-view
+  title: Binary Tree Right Side View
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/binary-tree-right-side-view/
+  fn: right_side_view
+  argTypes: [tree]
+  statement: |
+    Imagine standing on the right of the tree. Return the values you can see, top to bottom.
+
+    ```
+    [1,2,3,null,5,null,4] -> [1,3,4]
+    ```
+  starter: |
+    def right_side_view(root):
+        pass
+  tests:
+    - {args: [[1, 2, 3, null, 5, null, 4]], expected: [1, 3, 4]}
+    - {args: [[1, null, 3]], expected: [1, 3]}
+    - {args: [[]], expected: []}
+    - {args: [[1, 2]], expected: [1, 2], hidden: true}
+  hints:
+    - It's the last node of every BFS level.
+  solution: |
+    from collections import deque
+
+    def right_side_view(root):
+        out = []
+        q = deque([root] if root else [])
+        while q:
+            out.append(q[-1].val)
+            for _ in range(len(q)):
+                n = q.popleft()
+                if n.left:
+                    q.append(n.left)
+                if n.right:
+                    q.append(n.right)
+        return out
+  complexity: O(n) time, O(w) space
+  explain: '`q[-1]` on a deque is O(1).'
+
+- id: good-nodes
+  title: Count Good Nodes
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/count-good-nodes-in-binary-tree/
+  fn: good_nodes
+  argTypes: [tree]
+  statement: |
+    A node is **good** if no node on the path from the root to it has a greater value. Return the number of good nodes.
+
+    ```
+    [3,1,4,3,null,1,5] -> 4
+    ```
+  starter: |
+    def good_nodes(root):
+        pass
+  tests:
+    - {args: [[3, 1, 4, 3, null, 1, 5]], expected: 4}
+    - {args: [[3, 3, null, 4, 2]], expected: 3}
+    - {args: [[1]], expected: 1}
+    - {args: [[2, null, 4, 10, 8, null, null, 4]], expected: 4, hidden: true}
+  hints:
+    - Pass the maximum seen so far down the recursion.
+  solution: |
+    def good_nodes(root):
+        def dfs(n, mx):
+            if not n:
+                return 0
+            good = 1 if n.val >= mx else 0
+            mx = max(mx, n.val)
+            return good + dfs(n.left, mx) + dfs(n.right, mx)
+        return dfs(root, float("-inf"))
+  complexity: O(n) time, O(h) space
+  explain: An example of passing state *down*.
+
+- id: build-tree
+  title: Construct Tree from Preorder and Inorder
+  pattern: trees
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/construct-binary-tree-from-preorder-and-inorder-traversal/
+  fn: build_tree
+  retType: tree
+  statement: |
+    Given `preorder` and `inorder` traversals of a tree with **unique** values, rebuild and return the tree.
+
+    ```
+    preorder = [3,9,20,15,7], inorder = [9,3,15,20,7] -> [3,9,20,null,null,15,7]
+    ```
+  starter: |
+    def build_tree(preorder, inorder):
+        pass
+  tests:
+    - {args: [[3, 9, 20, 15, 7], [9, 3, 15, 20, 7]], expected: [3, 9, 20, null, null, 15, 7]}
+    - {args: [[-1], [-1]], expected: [-1]}
+    - {args: [[1, 2], [2, 1]], expected: [1, 2], hidden: true}
+    - {args: [[1, 2], [1, 2]], expected: [1, null, 2], hidden: true}
+    - {args: [[], []], expected: [], hidden: true}
+  hints:
+    - The first preorder value is the root. Its position in inorder splits left and right subtrees.
+    - Map value -> inorder index so the split is O(1).
+  solution: |
+    def build_tree(preorder, inorder):
+        idx = {v: i for i, v in enumerate(inorder)}
+        pre = iter(preorder)
+        def build(lo, hi):
+            if lo > hi:
+                return None
+            v = next(pre)
+            node = TreeNode(v)
+            m = idx[v]
+            node.left = build(lo, m - 1)
+            node.right = build(m + 1, hi)
+            return node
+        return build(0, len(inorder) - 1)
+  complexity: O(n) time, O(n) space
+  explain: An iterator over preorder avoids slicing (which would make it O(n²)).
+
+- id: max-path-sum
+  title: Binary Tree Maximum Path Sum
+  pattern: trees
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/binary-tree-maximum-path-sum/
+  fn: max_path_sum
+  argTypes: [tree]
+  statement: |
+    A path is any sequence of connected nodes (each node at most once; need not pass through the root). Return the maximum sum of node values over all non-empty paths.
+
+    ```
+    [-10,9,20,null,null,15,7] -> 42      (15 + 20 + 7)
+    ```
+  starter: |
+    def max_path_sum(root):
+        pass
+  tests:
+    - {args: [[1, 2, 3]], expected: 6}
+    - {args: [[-10, 9, 20, null, null, 15, 7]], expected: 42}
+    - {args: [[-3]], expected: -3}
+    - {args: [[2, -1]], expected: 2, hidden: true}
+    - {args: [[1, -2, 3]], expected: 4, hidden: true}
+  hints:
+    - Each call returns the best path that *starts* at the node and goes down one side.
+    - Update the global answer with node + best left gain + best right gain, ignoring negative gains.
+  solution: |
+    def max_path_sum(root):
+        best = float("-inf")
+        def gain(n):
+            nonlocal best
+            if not n:
+                return 0
+            l = max(gain(n.left), 0)
+            r = max(gain(n.right), 0)
+            best = max(best, n.val + l + r)
+            return n.val + max(l, r)
+        gain(root)
+        return best
+  complexity: O(n) time, O(h) space
+  explain: Same skeleton as diameter; the difference is clamping negative branches to zero.

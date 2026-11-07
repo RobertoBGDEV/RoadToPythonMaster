@@ -1,0 +1,150 @@
+- id: merge-intervals
+  title: Merge Intervals
+  pattern: intervals
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/merge-intervals/
+  fn: merge
+  statement: |
+    Merge all overlapping intervals and return the result sorted by start.
+
+    ```
+    [[1,3],[2,6],[8,10],[15,18]] -> [[1,6],[8,10],[15,18]]
+    [[1,4],[4,5]] -> [[1,5]]
+    ```
+  starter: |
+    def merge(intervals):
+        pass
+  tests:
+    - {args: [[[1, 3], [2, 6], [8, 10], [15, 18]]], expected: [[1, 6], [8, 10], [15, 18]]}
+    - {args: [[[1, 4], [4, 5]]], expected: [[1, 5]]}
+    - {args: [[[1, 4], [0, 4]]], expected: [[0, 4]], hidden: true}
+    - {args: [[[1, 4], [2, 3]]], expected: [[1, 4]], hidden: true}
+    - {args: [[[5, 6], [1, 2], [3, 4]]], expected: [[1, 2], [3, 4], [5, 6]], hidden: true}
+  hints:
+    - Sort by start. Then each interval either extends the last merged one or begins a new one.
+  solution: |
+    def merge(intervals):
+        out = []
+        for s, e in sorted(intervals):
+            if out and s <= out[-1][1]:
+                out[-1][1] = max(out[-1][1], e)
+            else:
+                out.append([s, e])
+        return out
+  complexity: O(n log n) time, O(n) space
+  explain: Taking the max of ends handles a fully contained interval.
+
+- id: insert-interval
+  title: Insert Interval
+  pattern: intervals
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/insert-interval/
+  fn: insert
+  statement: |
+    `intervals` is sorted by start and non-overlapping. Insert `new_interval`, merging as needed, and return the result.
+
+    ```
+    [[1,3],[6,9]], [2,5] -> [[1,5],[6,9]]
+    ```
+  starter: |
+    def insert(intervals, new_interval):
+        pass
+  tests:
+    - {args: [[[1, 3], [6, 9]], [2, 5]], expected: [[1, 5], [6, 9]]}
+    - {args: [[[1, 2], [3, 5], [6, 7], [8, 10], [12, 16]], [4, 8]], expected: [[1, 2], [3, 10], [12, 16]]}
+    - {args: [[], [5, 7]], expected: [[5, 7]]}
+    - {args: [[[1, 5]], [2, 3]], expected: [[1, 5]], hidden: true}
+    - {args: [[[1, 5]], [6, 8]], expected: [[1, 5], [6, 8]], hidden: true}
+    - {args: [[[3, 5]], [0, 1]], expected: [[0, 1], [3, 5]], hidden: true}
+  hints:
+    - Three phases: intervals entirely before, intervals overlapping (merge them), intervals entirely after.
+  solution: |
+    def insert(intervals, new_interval):
+        out = []
+        s, e = new_interval
+        i, n = 0, len(intervals)
+        while i < n and intervals[i][1] < s:
+            out.append(intervals[i]); i += 1
+        while i < n and intervals[i][0] <= e:
+            s = min(s, intervals[i][0])
+            e = max(e, intervals[i][1])
+            i += 1
+        out.append([s, e])
+        out.extend(intervals[i:])
+        return out
+  complexity: O(n) time, O(n) space
+  explain: Because the input is already sorted, no sort is required, so it's linear.
+
+- id: non-overlapping
+  title: Non-overlapping Intervals
+  pattern: intervals
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/non-overlapping-intervals/
+  fn: erase_overlap_intervals
+  statement: |
+    Return the minimum number of intervals to remove so that the rest do not overlap. Intervals that only touch (`[1,2]`, `[2,3]`) do not overlap.
+
+    ```
+    [[1,2],[2,3],[3,4],[1,3]] -> 1
+    ```
+  starter: |
+    def erase_overlap_intervals(intervals):
+        pass
+  tests:
+    - {args: [[[1, 2], [2, 3], [3, 4], [1, 3]]], expected: 1}
+    - {args: [[[1, 2], [1, 2], [1, 2]]], expected: 2}
+    - {args: [[[1, 2], [2, 3]]], expected: 0}
+    - {args: [[[1, 100], [11, 22], [1, 11], [2, 12]]], expected: 2, hidden: true}
+    - {args: [[]], expected: 0, hidden: true}
+  hints:
+    - Maximise how many you keep. Sort by end time; always keep the earliest-ending interval that fits.
+  solution: |
+    def erase_overlap_intervals(intervals):
+        intervals = sorted(intervals, key=lambda x: x[1])
+        removed, end = 0, float("-inf")
+        for s, e in intervals:
+            if s >= end:
+                end = e
+            else:
+                removed += 1
+        return removed
+  complexity: O(n log n) time, O(1) extra space
+  explain: Classic greedy (activity selection), with the exchange argument being the interview explanation.
+
+- id: meeting-rooms-ii
+  title: Meeting Rooms II
+  pattern: intervals
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/meeting-rooms-ii/
+  fn: min_meeting_rooms
+  statement: |
+    Given meeting time intervals `[start, end)`, return the minimum number of rooms required.
+
+    ```
+    [[0,30],[5,10],[15,20]] -> 2
+    ```
+  starter: |
+    def min_meeting_rooms(intervals):
+        pass
+  tests:
+    - {args: [[[0, 30], [5, 10], [15, 20]]], expected: 2}
+    - {args: [[[7, 10], [2, 4]]], expected: 1}
+    - {args: [[[1, 5], [2, 6], [3, 7]]], expected: 3, hidden: true}
+    - {args: [[[1, 2], [2, 3]]], expected: 1, hidden: true}
+    - {args: [[]], expected: 0, hidden: true}
+  hints:
+    - Sort by start and keep a min-heap of end times of rooms in use.
+    - If the earliest-ending meeting is over before this one starts, reuse its room.
+  solution: |
+    import heapq
+
+    def min_meeting_rooms(intervals):
+        ends = []
+        for s, e in sorted(intervals):
+            if ends and ends[0] <= s:
+                heapq.heapreplace(ends, e)
+            else:
+                heapq.heappush(ends, e)
+        return len(ends)
+  complexity: O(n log n) time, O(n) space
+  explain: Two sorted arrays of starts and ends with two pointers is an equivalent O(1)-heap alternative.

@@ -1,0 +1,137 @@
+- id: implement-trie
+  title: Implement Trie
+  pattern: tries
+  difficulty: medium
+  kind: design
+  className: Trie
+  leetcode: https://leetcode.com/problems/implement-trie-prefix-tree/
+  statement: |
+    Implement `Trie` with `insert(word)`, `search(word)` (exact word present) and `starts_with(prefix)`.
+
+    ```
+    t = Trie(); t.insert("apple")
+    t.search("apple") -> True;  t.search("app") -> False
+    t.starts_with("app") -> True
+    ```
+  starter: |
+    class Trie:
+        def __init__(self):
+            pass
+
+        def insert(self, word):
+            pass
+
+        def search(self, word):
+            pass
+
+        def starts_with(self, prefix):
+            pass
+  tests:
+    - ops: [Trie, insert, search, search, starts_with, insert, search]
+      args: [[], ["apple"], ["apple"], ["app"], ["app"], ["app"], ["app"]]
+      expected: [null, null, true, false, true, null, true]
+    - ops: [Trie, search, starts_with, insert, starts_with]
+      args: [[], ["a"], ["a"], ["abc"], ["abd"]]
+      expected: [null, false, false, null, false]
+      hidden: true
+    - ops: [Trie, insert, insert, search, starts_with, starts_with]
+      args: [[], ["car"], ["card"], ["car"], ["car"], ["cart"]]
+      expected: [null, null, null, true, true, false]
+      hidden: true
+    - ops: [Trie, insert, search, search]
+      args: [[], ["a"], ["a"], ["b"]]
+      expected: [null, null, true, false]
+      hidden: true
+  hints:
+    - Each node can be a dict from character to child node, plus a flag for "a word ends here".
+  solution: |
+    class Trie:
+        def __init__(self):
+            self.root = {}
+
+        def insert(self, word):
+            node = self.root
+            for ch in word:
+                node = node.setdefault(ch, {})
+            node["$"] = True
+
+        def _walk(self, s):
+            node = self.root
+            for ch in s:
+                if ch not in node:
+                    return None
+                node = node[ch]
+            return node
+
+        def search(self, word):
+            node = self._walk(word)
+            return bool(node and "$" in node)
+
+        def starts_with(self, prefix):
+            return self._walk(prefix) is not None
+  complexity: O(L) per operation
+  explain: A `$` key is a neat end marker because input characters are letters.
+
+- id: word-dictionary
+  title: Design Add and Search Words
+  pattern: tries
+  difficulty: medium
+  kind: design
+  className: WordDictionary
+  leetcode: https://leetcode.com/problems/design-add-and-search-words-data-structure/
+  statement: |
+    Implement `WordDictionary` with `add_word(word)` and `search(word)`. In `search`, a `.` matches any single letter.
+
+    ```
+    add_word("bad"); add_word("dad"); search("pad") -> False; search("b.d") -> True; search(".ad") -> True
+    ```
+  starter: |
+    class WordDictionary:
+        def __init__(self):
+            pass
+
+        def add_word(self, word):
+            pass
+
+        def search(self, word):
+            pass
+  tests:
+    - ops: [WordDictionary, add_word, add_word, add_word, search, search, search, search]
+      args: [[], ["bad"], ["dad"], ["mad"], ["pad"], ["bad"], [".ad"], ["b.."]]
+      expected: [null, null, null, null, false, true, true, true]
+    - ops: [WordDictionary, add_word, search, search, search]
+      args: [[], ["a"], ["."], ["a."], [".a"]]
+      expected: [null, null, true, false, false]
+      hidden: true
+    - ops: [WordDictionary, search, add_word, search]
+      args: [[], ["a"], ["abc"], ["a.c"]]
+      expected: [null, false, null, true]
+      hidden: true
+    - ops: [WordDictionary, add_word, add_word, search, search]
+      args: [[], ["at"], ["and"], ["a"], ["an."]]
+      expected: [null, null, null, false, true]
+      hidden: true
+  hints:
+    - On a '.', try every child (recursion / DFS).
+  solution: |
+    class WordDictionary:
+        def __init__(self):
+            self.root = {}
+
+        def add_word(self, word):
+            node = self.root
+            for ch in word:
+                node = node.setdefault(ch, {})
+            node["$"] = True
+
+        def search(self, word):
+            def dfs(i, node):
+                if i == len(word):
+                    return "$" in node
+                ch = word[i]
+                if ch == ".":
+                    return any(dfs(i + 1, child) for k, child in node.items() if k != "$")
+                return ch in node and dfs(i + 1, node[ch])
+            return dfs(0, self.root)
+  complexity: O(L) add; O(26^L) worst-case search with many wildcards
+  explain: The worst case is bounded by the number of stored nodes, not 26^L, in practice.

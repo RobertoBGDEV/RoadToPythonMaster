@@ -1,0 +1,278 @@
+- id: reverse-list
+  title: Reverse Linked List
+  pattern: linked-list
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/reverse-linked-list/
+  fn: reverse_list
+  argTypes: [listnode]
+  retType: listnode
+  statement: |
+    Reverse a singly linked list and return the new head. `ListNode(val, next)` is predefined.
+
+    ```
+    1 -> 2 -> 3 -> 4 -> 5   becomes   5 -> 4 -> 3 -> 2 -> 1
+    ```
+  starter: |
+    # ListNode is predefined: ListNode(val=0, next=None)
+    def reverse_list(head):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4, 5]], expected: [5, 4, 3, 2, 1]}
+    - {args: [[1, 2]], expected: [2, 1]}
+    - {args: [[]], expected: []}
+    - {args: [[7]], expected: [7], hidden: true}
+  hints:
+    - Keep `prev` and `cur`. Before overwriting cur.next, save it.
+  solution: |
+    def reverse_list(head):
+        prev = None
+        while head:
+            nxt = head.next
+            head.next = prev
+            prev, head = head, nxt
+        return prev
+  complexity: O(n) time, O(1) space
+  explain: The recursive version is O(n) stack space.
+
+- id: merge-two-lists
+  title: Merge Two Sorted Lists
+  pattern: linked-list
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/merge-two-sorted-lists/
+  fn: merge_two_lists
+  argTypes: [listnode, listnode]
+  retType: listnode
+  statement: |
+    Merge two sorted linked lists into one sorted list by splicing together the nodes. Return the head.
+
+    ```
+    1->2->4  and  1->3->4   =>   1->1->2->3->4->4
+    ```
+  starter: |
+    def merge_two_lists(l1, l2):
+        pass
+  tests:
+    - {args: [[1, 2, 4], [1, 3, 4]], expected: [1, 1, 2, 3, 4, 4]}
+    - {args: [[], []], expected: []}
+    - {args: [[], [0]], expected: [0]}
+    - {args: [[5], [1, 2, 3]], expected: [1, 2, 3, 5], hidden: true}
+  hints:
+    - A dummy head removes the "which list starts?" case.
+  solution: |
+    def merge_two_lists(l1, l2):
+        dummy = tail = ListNode()
+        while l1 and l2:
+            if l1.val <= l2.val:
+                tail.next, l1 = l1, l1.next
+            else:
+                tail.next, l2 = l2, l2.next
+            tail = tail.next
+        tail.next = l1 or l2
+        return dummy.next
+  complexity: O(m + n) time, O(1) space
+  explain: '`tail.next = l1 or l2` appends whichever list still has nodes.'
+
+- id: remove-nth-from-end
+  title: Remove Nth Node From End
+  pattern: linked-list
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/remove-nth-node-from-end-of-list/
+  fn: remove_nth_from_end
+  argTypes: [listnode, null]
+  retType: listnode
+  statement: |
+    Remove the `n`-th node from the **end** of the list and return the head. Do it in one pass.
+
+    ```
+    [1,2,3,4,5], n = 2 -> [1,2,3,5]
+    ```
+  starter: |
+    def remove_nth_from_end(head, n):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4, 5], 2], expected: [1, 2, 3, 5]}
+    - {args: [[1], 1], expected: []}
+    - {args: [[1, 2], 1], expected: [1]}
+    - {args: [[1, 2], 2], expected: [2], hidden: true}
+    - {args: [[1, 2, 3], 3], expected: [2, 3], hidden: true}
+  hints:
+    - Advance a fast pointer n steps ahead, then move both until fast hits the end.
+    - A dummy head handles removing the first node.
+  solution: |
+    def remove_nth_from_end(head, n):
+        dummy = ListNode(0, head)
+        fast = slow = dummy
+        for _ in range(n):
+            fast = fast.next
+        while fast.next:
+            fast, slow = fast.next, slow.next
+        slow.next = slow.next.next
+        return dummy.next
+  complexity: O(L) time, O(1) space
+  explain: The gap of n between the pointers makes `slow` land on the node before the one to delete.
+
+- id: middle-of-list
+  title: Middle of the Linked List
+  pattern: linked-list
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/middle-of-the-linked-list/
+  fn: middle_node
+  argTypes: [listnode]
+  retType: listnode
+  statement: |
+    Return the middle node of the list (the **second** middle if there are two). The checker shows the list from that node onward.
+
+    ```
+    [1,2,3,4,5]   -> [3,4,5]
+    [1,2,3,4,5,6] -> [4,5,6]
+    ```
+  starter: |
+    def middle_node(head):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4, 5]], expected: [3, 4, 5]}
+    - {args: [[1, 2, 3, 4, 5, 6]], expected: [4, 5, 6]}
+    - {args: [[1]], expected: [1], hidden: true}
+    - {args: [[1, 2]], expected: [2], hidden: true}
+  hints:
+    - One pointer moves 2x as fast as the other.
+  solution: |
+    def middle_node(head):
+        slow = fast = head
+        while fast and fast.next:
+            slow, fast = slow.next, fast.next.next
+        return slow
+  complexity: O(n) time, O(1) space
+  explain: When fast reaches the end, slow is halfway.
+
+- id: reorder-list
+  title: Reorder List
+  pattern: linked-list
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/reorder-list/
+  fn: reorder_list
+  argTypes: [listnode]
+  inplace: 0
+  statement: |
+    Reorder `L0 → L1 → … → Ln-1 → Ln` into `L0 → Ln → L1 → Ln-1 → L2 → …` **in place** (modify nodes; return nothing).
+
+    ```
+    [1,2,3,4]   -> [1,4,2,3]
+    [1,2,3,4,5] -> [1,5,2,4,3]
+    ```
+  starter: |
+    def reorder_list(head):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4]], expected: [1, 4, 2, 3]}
+    - {args: [[1, 2, 3, 4, 5]], expected: [1, 5, 2, 4, 3]}
+    - {args: [[1]], expected: [1], hidden: true}
+    - {args: [[1, 2]], expected: [1, 2], hidden: true}
+    - {args: [[1, 2, 3]], expected: [1, 3, 2], hidden: true}
+  hints:
+    - Combine three techniques: find the middle, reverse the second half, then weave the two halves.
+  solution: |
+    def reorder_list(head):
+        if not head or not head.next:
+            return
+        slow, fast = head, head
+        while fast.next and fast.next.next:
+            slow, fast = slow.next, fast.next.next
+        second, slow.next = slow.next, None
+        prev = None
+        while second:
+            nxt = second.next
+            second.next = prev
+            prev, second = second, nxt
+        first, second = head, prev
+        while second:
+            f2, s2 = first.next, second.next
+            first.next = second
+            second.next = f2
+            first, second = f2, s2
+  complexity: O(n) time, O(1) space
+  explain: A good "can you combine primitives?" problem. Each step is a pattern you've already seen.
+
+- id: add-two-numbers
+  title: Add Two Numbers
+  pattern: linked-list
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/add-two-numbers/
+  fn: add_two_numbers
+  argTypes: [listnode, listnode]
+  retType: listnode
+  statement: |
+    Two non-empty lists represent non-negative integers with digits stored in **reverse order**. Return their sum as a list in the same format.
+
+    ```
+    [2,4,3] + [5,6,4]  ->  [7,0,8]    (342 + 465 = 807)
+    ```
+  starter: |
+    def add_two_numbers(l1, l2):
+        pass
+  tests:
+    - {args: [[2, 4, 3], [5, 6, 4]], expected: [7, 0, 8]}
+    - {args: [[0], [0]], expected: [0]}
+    - {args: [[9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9]], expected: [8, 9, 9, 9, 0, 0, 0, 1]}
+    - {args: [[5], [5]], expected: [0, 1], hidden: true}
+  hints:
+    - Walk both lists at once, carrying the overflow. Continue while either list or the carry remains.
+  solution: |
+    def add_two_numbers(l1, l2):
+        dummy = cur = ListNode()
+        carry = 0
+        while l1 or l2 or carry:
+            v = carry + (l1.val if l1 else 0) + (l2.val if l2 else 0)
+            carry, digit = divmod(v, 10)
+            cur.next = ListNode(digit)
+            cur = cur.next
+            l1 = l1.next if l1 else None
+            l2 = l2.next if l2 else None
+        return dummy.next
+  complexity: O(max(m, n)) time, O(1) extra space
+  explain: '`divmod` gives carry and digit in one call.'
+
+- id: merge-k-lists
+  title: Merge k Sorted Lists
+  pattern: linked-list
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/merge-k-sorted-lists/
+  fn: merge_k_lists
+  argTypes: [listnodes]
+  retType: listnode
+  statement: |
+    Merge `k` sorted linked lists (given as a list of heads) into one sorted list.
+
+    ```
+    [[1,4,5],[1,3,4],[2,6]] -> [1,1,2,3,4,4,5,6]
+    ```
+  starter: |
+    def merge_k_lists(lists):
+        pass
+  tests:
+    - {args: [[[1, 4, 5], [1, 3, 4], [2, 6]]], expected: [1, 1, 2, 3, 4, 4, 5, 6]}
+    - {args: [[]], expected: []}
+    - {args: [[[]]], expected: []}
+    - {args: [[[], [1], []]], expected: [1], hidden: true}
+    - {args: [[[5], [1, 2], [3]]], expected: [1, 2, 3, 5], hidden: true}
+  hints:
+    - A min-heap of the current head of each list yields the global minimum in O(log k).
+    - Heap entries are (value, list_index, node) so ties never compare nodes.
+  solution: |
+    import heapq
+
+    def merge_k_lists(lists):
+        heap = []
+        for i, node in enumerate(lists):
+            if node:
+                heapq.heappush(heap, (node.val, i, node))
+        dummy = tail = ListNode()
+        while heap:
+            _, i, node = heapq.heappop(heap)
+            tail.next = node
+            tail = node
+            if node.next:
+                heapq.heappush(heap, (node.next.val, i, node.next))
+        return dummy.next
+  complexity: O(N log k) time, O(k) space
+  explain: Divide-and-conquer pairwise merging gives the same time bound with O(1) heap space.
