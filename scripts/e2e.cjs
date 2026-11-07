@@ -52,6 +52,57 @@ const assert = require('node:assert');
     await page.waitForFunction(() => document.querySelector('.output')?.textContent.includes('alive'), null, { timeout: 30000 });
     console.log('ok infinite loop interrupted + recovered');
 
+    // 3b. Spaced repetition: an overdue solved problem shows up under Review
+    await page.evaluate(() => {
+      const st = JSON.parse(localStorage.getItem('rtpm:v1'));
+      st.problems['two-sum'].due = Date.now() - 1000;
+      localStorage.setItem('rtpm:v1', JSON.stringify(st));
+    });
+    await page.goto(base + 'roadmap'); await page.goto(base + 'today');
+    await page.reload();
+    await page.waitForSelector('h1');
+    assert.match(await page.locator('body').innerText(), /1 due/);
+    console.log('ok review queue shows overdue problem');
+
+    // 3c. Lesson completion awards XP and quiz works
+    await page.goto(base + 'lesson/py-syntax');
+    await page.locator('.quiz .opt').nth(1).click();
+    assert.ok(await page.locator('.quiz .opt.right').count() >= 1);
+    await page.locator('.footer-actions .btn.primary').click();
+    await page.waitForFunction(() => /Completed/.test(document.querySelector('.footer-actions .btn')?.textContent || ''));
+    console.log('ok lesson quiz + completion');
+
+    // 3d. Pattern drill answers and scores
+    await page.goto(base + 'drill');
+    await page.locator('.options .opt').first().click();
+    await page.waitForSelector('.options .opt.right');
+    console.log('ok pattern drill');
+
+    // 3e. Story bank save
+    await page.goto(base + 'stories');
+    await page.getByText('+ New story').click();
+    await page.locator('.form input').first().fill('Migrated risk batch');
+    await page.locator('.form textarea').first().fill('Nightly batch took 6h');
+    await page.getByRole('button', { name: 'Save' }).click();
+    assert.match(await page.locator('body').innerText(), /Migrated risk batch/);
+    console.log('ok story bank');
+
+    // 3f. Mock interview: starts, shows timer, finishes and records history
+    await page.goto(base + 'mock');
+    await page.getByRole('button', { name: 'Start mock' }).click();
+    await page.waitForSelector('.clock');
+    assert.match(await page.locator('.clock').innerText(), /4\d:\d\d|45:00/);
+    await page.getByRole('button', { name: 'Finish' }).click();
+    await page.waitForSelector('text=Mock finished');
+    console.log('ok mock interview');
+
+    // 3g. Export backup contains progress
+    await page.goto(base + 'settings');
+    const raw = await page.evaluate(() => localStorage.getItem('rtpm:v1'));
+    const st = JSON.parse(raw);
+    assert.ok(st.xp > 0 && st.stories.length === 1 && st.mocks.length === 1);
+    console.log('ok progress persisted');
+
     // 4. Every top-level page renders without runtime errors
     for (const r of ['today', 'roadmap', 'problems', 'drill', 'mock', 'stories', 'settings']) {
       await page.goto(base + r);

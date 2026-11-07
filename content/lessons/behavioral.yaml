@@ -1,0 +1,143 @@
+- id: beh-playbook
+  track: behavioral
+  week: 1
+  title: The coding interview playbook
+  summary: "How to run the 45 minutes: clarify, example, brute force, optimise, code, test. Communication is half the score."
+  minutes: 8
+  xp: 25
+  sections:
+    - md: |
+        ## The loop (memorise it)
+        1. **Restate & clarify (2 min).** Input types/ranges, empty input, duplicates, negative numbers, sorted?, can I mutate the input? Return value for "not found"?
+        2. **Walk through an example** by hand, including one edge case.
+        3. **Brute force first.** State it and its complexity: *"O(n²). It works but let me see if we can drop the inner loop."* Naming the bottleneck is how you find the optimisation.
+        4. **Optimise.** Say the pattern: *"I'm looking up complements → hash map → O(n) time, O(n) space."* Confirm the approach with the interviewer **before** coding.
+        5. **Code** cleanly: meaningful names, small helpers, no clever tricks you can't explain. Talk while you type.
+        6. **Test by tracing** your code on the example and one edge case. Don't just say "looks good".
+        7. **Complexity and follow-ups.** Time, space, and what you'd change for streaming/huge input.
+
+        ## If you're stuck
+        - Say what you *do* know. Simplify: smaller input, sorted input, one dimension.
+        - Ask a clarifying question. It is not a weakness.
+        - Try brute-force on paper and look for repeated work (memoise), sorted order (two pointers/binary search), or a structure that gives O(1) lookups (hash/heap).
+        - Take hints gracefully and build on them.
+
+        ## Python-specific polish
+        Use `enumerate`, `zip`, `Counter`, `defaultdict`, `deque`, `heapq`, `bisect`. Mention complexities of built-ins. Prefer clear code over one-liners.
+
+        ## Pre-flight checklist
+        Empty input · single element · duplicates · negatives/zero · overflow (n/a in Python, but say so) · off-by-one on loops and slices · mutated input · recursion depth.
+    - md: |
+        ## Use this app like an interview
+        For every new problem: set a 25-minute timer, **talk out loud** (even alone), write the complexity before submitting, and afterwards write one line in Notes: *"pattern + the trick"*. The spaced-repetition queue then makes you re-solve it from scratch.
+  quiz:
+    - q: What should you do immediately after settling on an approach but before coding?
+      options: ["Start typing", "Confirm the approach and its complexity with the interviewer", "Ask for a hint", "Write tests"]
+      answer: 1
+      why: Agreeing the plan prevents wasting 20 minutes on something the interviewer would have redirected.
+
+- id: beh-star
+  track: behavioral
+  week: 3
+  title: "Behavioural answers: STAR and your story bank"
+  summary: Build 6-8 reusable stories from your real work, each mapped to several competencies.
+  minutes: 10
+  xp: 30
+  requires: [beh-playbook]
+  sections:
+    - md: |
+        ## STAR, tuned for engineers
+        - **S**ituation (1-2 sentences): team, system, stakes.
+        - **T**ask: *your* responsibility. "I was the owner of…"
+        - **A**ction (the bulk, ~60%): what **you** did: decisions, trade-offs, who you convinced. Use "I", not "we".
+        - **R**esult: measurable (latency −40%, incident MTTR 2h → 20m, $ saved) **plus what you learned / would change**.
+
+        Aim for **2 minutes**. Practice out loud. Have the story ready to expand on the technical depth if probed.
+
+        ## The 6-8 stories to prepare (from your BlackRock work)
+        1. A **technically complex project** you owned end to end.
+        2. A **production incident** you led or debugged (what you did under pressure; the post-mortem and prevention).
+        3. A **disagreement** with a teammate/manager/stakeholder, and how it ended.
+        4. A **failure or mistake** (real, with ownership and what changed).
+        5. A time you **improved a process, performance or reliability** measurably.
+        6. A time you **mentored** someone or raised the bar for the team.
+        7. A time with **ambiguity** or incomplete requirements, and how you created clarity.
+        8. A **tight deadline / trade-off** you negotiated (scope vs quality).
+
+        Tag each story with several competencies (ownership, conflict, impact, leadership, technical depth) in the **Story bank** page so a single story can answer many questions.
+
+        ## Red flags
+        All "we", no "I" · blaming others · no measurable result · a "failure" that is really a humble-brag · rambling past 3 minutes.
+    - md: |
+        > Go to **Story bank** now and write the first two stories while the details are fresh.
+  quiz:
+    - q: In STAR, which part should take the most time?
+      options: ["Situation", "Task", "Action", "Result"]
+      answer: 2
+      why: Interviewers evaluate *your* decisions and execution, so spend about 60% of the answer on Action.
+
+- id: beh-levels
+  track: behavioral
+  week: 4
+  title: "What SWE II vs SWE III signals look like"
+  summary: The scope, ownership and influence differences, and how to demonstrate the next level.
+  minutes: 8
+  xp: 25
+  requires: [beh-star]
+  sections:
+    - md: |
+        Titles vary by company, but the pattern is consistent. Aim your stories and design answers at the **upper** column.
+
+        | Dimension | SWE II (solid mid-level) | SWE III / Senior |
+        |---|---|---|
+        | **Scope** | A feature or component, well-defined | A system or cross-team project; defines the problem, not just the solution |
+        | **Autonomy** | Executes with light guidance | Drives ambiguity; others bring problems to them |
+        | **Design** | Implements a given design well | Proposes designs, weighs trade-offs, writes the doc, gets buy-in |
+        | **Quality** | Tests their own code | Raises the testing/observability/operational bar for the team |
+        | **Influence** | Helps teammates | Mentors, leads reviews, influences roadmap and other teams |
+        | **Impact language** | "I built X" | "I identified Y was costing Z, drove a fix across three teams, and cut it by N%" |
+
+        ## How to show it in an interview
+        - **Behavioural:** pick stories where you **led** (not just participated), made a decision with trade-offs, and the **impact was measured**.
+        - **System design:** volunteer requirements and numbers, name alternatives and *why not*, discuss failure and operations.
+        - **Coding:** speed and cleanliness. Seniors catch edge cases before being asked and communicate complexity unprompted.
+        - **Questions for them:** ask about on-call, how design decisions are made, how teams handle tech debt.
+
+        ## Switching from a bank / asset manager
+        Translate domain work into transferable strengths: correctness under regulation, reliability of financial pipelines, data quality, auditability, handling large batch + real-time workloads. Show you can also move fast (startup/product-company interviews probe for it).
+  quiz:
+    - q: Which story is a stronger Senior signal?
+      options: ["I implemented the ticket as written", "I noticed repeated outages, proposed a redesign, aligned three teams and cut incidents by 60%", "I attended design meetings", "I fixed a typo"]
+      answer: 1
+      why: Senior signal = identifying the problem, driving cross-team execution and measuring impact.
+
+- id: beh-offer
+  track: behavioral
+  week: 11
+  title: Offers, levelling and negotiation
+  summary: How to land at the right level and negotiate without burning goodwill.
+  minutes: 7
+  xp: 20
+  requires: [beh-levels]
+  sections:
+    - md: |
+        ## Before the offer
+        - **Level matters more than salary** (it sets your band for years). Ask early what level the role is calibrated for, and tell them the level you're targeting.
+        - Run processes **in parallel** so offers land in the same 1-2 week window. Competing offers are your leverage.
+        - Don't state a number first if you can avoid it: *"I'd like to understand the role and level first; I'm confident we'll find a number that works."* If forced, give a **researched range** whose bottom you'd happily accept.
+
+        ## The offer
+        - Thank them, express enthusiasm, **ask for time** (a few days) and for the **full breakdown**: base, bonus, equity (vesting schedule, cliff, refresh policy), sign-on, relocation, remote policy.
+        - Compare using **total compensation per year** and the realistic value of equity (public vs private).
+        - Negotiate **once, with data** (market ranges, competing offers), all items together. Base and sign-on/equity are usually the movable parts. Always in a collaborative tone.
+
+        ## Script
+        *"I'm really excited about the team and the work. Based on my other conversations and the market for this level, I was hoping for X total compensation. Is there flexibility to get closer to that?"*
+
+        ## Other things worth asking
+        On-call load, team size, what promotion to the next level looks like, how performance is measured, interview feedback on how you did.
+  quiz:
+    - q: Why does getting the right level matter more than a small salary bump?
+      options: ["It doesn't", "Level sets your comp band and future growth trajectory", "Titles are free", "Levels are the same everywhere"]
+      answer: 1
+      why: A lower level compounds into lower pay and slower promotion for years.

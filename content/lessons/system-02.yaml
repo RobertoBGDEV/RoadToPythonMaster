@@ -1,0 +1,295 @@
+- id: sd-url-shortener
+  track: system
+  week: 9
+  title: "Case study: URL shortener"
+  summary: The classic warm-up. Key generation, read-heavy caching and what to say when asked to go deeper.
+  minutes: 12
+  xp: 30
+  requires: [sd-data]
+  sections:
+    - md: |
+        ## 1. Requirements
+        - **Functional:** create short URL from long URL (optional custom alias, expiry); redirect short → long.
+        - **Non-functional:** very low redirect latency, high availability, links are not guessable-sequential, ~100:1 read:write.
+        - **Out of scope (say it):** analytics dashboards, user accounts.
+
+        ## 2. Estimation
+        100 M new URLs/month ≈ 40 writes/s; reads ≈ 4,000/s (peak maybe 12k). 500 B × 100 M × 12 × 5 y ≈ 3 TB, which is small. **Conclusion:** one replicated DB plus a cache is enough. Shard later by short code.
+
+        ## 3. API
+        - `POST /urls {long_url, alias?, ttl?} → {short_url}` (idempotent per `(user, long_url)` if desired)
+        - `GET /{code} → 301/302 Location: long_url`
+        - **301 vs 302:** 301 is cacheable by browsers (less load, but you lose analytics and can't revoke); 302 keeps control. Say which you pick and why.
+
+        ## 4. Generating the code (the interesting part)
+        | Approach | Pros | Cons |
+        |---|---|---|
+        | Hash(long_url) → first 7 chars | Stateless | Collisions need retry/check; same URL → same code |
+        | **Counter → base62** | No collisions, short | Sequential = guessable; counter is a bottleneck |
+        | **Pre-generated key service** (ranges handed to app servers) | No coordination per request | Operational piece to run |
+        | Random 7 chars + unique constraint | Unguessable | Retry on collision |
+
+        7 base62 chars = 62⁷ ≈ 3.5 trillion codes, plenty. A good answer: **counter ranges leased per server (e.g. 1,000 ids at a time) then base62-encoded after a reversible scramble** to avoid guessability.
+
+        ## 5. Design
+        Client → CDN/LB → stateless app servers → **Redis cache** (code → long URL, LRU, TTL) → **DB** (`code` primary key; NoSQL KV or Postgres both fine). Writes go to the DB leader; reads hit cache first, then followers.
+
+        ## 6. Deep dives
+        - **Hot links:** cache + CDN edge caching of 301s.
+        - **Expiry:** store `expires_at`, check on read, purge lazily + background sweep.
+        - **Abuse:** rate limit creation, malware/phishing URL scanning.
+        - **Availability:** multi-AZ DB, cache failure falls back to DB (watch for stampede).
+    - code: |
+        import string
+        ALPHABET = string.digits + string.ascii_lowercase + string.ascii_uppercase      # 62 chars
+
+        def encode(n: int) -> str:
+            if n == 0: return ALPHABET[0]
+            out = []
+            while n:
+                n, r = divmod(n, 62)
+                out.append(ALPHABET[r])
+            return "".join(reversed(out))
+
+        def decode(s: str) -> int:
+            n = 0
+            for ch in s:
+                n = n * 62 + ALPHABET.index(ch)
+            return n
+
+        # make sequential ids non-guessable with a reversible multiplicative scramble (mod 62^7)
+        M, A = 62 ** 7, 982_451_653          # A is coprime with M, so the mapping is a bijection
+        scramble = lambda n: (n * A) % M
+        for i in (1, 2, 3, 123456789):
+            c = encode(scramble(i))
+            print(i, "->", c.rjust(7, "0"))
+        print(decode(encode(123456789)), 62 ** 7)
+      caption: Base62 encoding plus a reversible scramble
+  quiz:
+    - q: Why prefer a 302 over a 301 redirect for a shortener with analytics?
+      options: ["302 is faster", "301 is cached by browsers so you'd never see repeat clicks", "301 is invalid", "No difference"]
+      answer: 1
+      why: Permanent redirects are cached client-side, bypassing your service. Use 302 (or 307) if you need counts or revocation.
+
+- id: sd-rate-limiter
+  track: system
+  week: 9
+  title: "Case study: distributed rate limiter"
+  summary: Algorithms, where to enforce, and how to make it work across many servers.
+  minutes: 11
+  xp: 30
+  requires: [sd-reliability]
+  sections:
+    - md: |
+        ## Requirements
+        Limit requests per client (user/API key/IP) per time window, return `429 Too Many Requests` with `Retry-After`. Low added latency (< 1-2 ms), works across many app servers, **fail open** if the limiter is down (usually).
+
+        ## Algorithms
+        | Algorithm | Behaviour | Memory | Notes |
+        |---|---|---|---|
+        | **Fixed window counter** | Count per window | O(1)/key | Boundary burst: 2× limit across a boundary |
+        | **Sliding window log** | Store timestamps | O(limit)/key | Exact, memory hungry |
+        | **Sliding window counter** | Weighted blend of current + previous window | O(1)/key | Good approximation, popular |
+        | **Token bucket** | Refill rate + burst capacity | O(1)/key | Allows bursts; what you implemented in the LLD problem |
+        | **Leaky bucket** | Constant outflow | O(1) / queue | Smooths traffic |
+
+        ## Where
+        API gateway / edge (cheapest, coarse), service middleware (per-endpoint rules), client-side hints. Rules are config (per tier, per endpoint) pushed to the limiter.
+
+        ## Distributed implementation
+        - Counters in **Redis**, key = `rl:{client}:{window}`, with `INCR` + `EXPIRE`. Token bucket needs read-modify-write → use a **Lua script** (atomic) rather than get-then-set (a race).
+        - Round trip per request adds latency. Reduce it by keeping **local approximate counters** that sync periodically, accepting small over-admission.
+        - **Sharding:** consistent hashing on client id. **Hot clients** may need local pre-limits.
+        - **Clock skew:** use Redis time or monotonic server time in the script.
+
+        ## Trade-offs to state
+        Accuracy vs latency vs memory; fail-open vs fail-closed (security-sensitive endpoints may fail closed); per-region vs global limits.
+    - code: |
+        # Sliding-window COUNTER: O(1) memory, smooth. Deterministic via an injected clock.
+        class SlidingWindowCounter:
+            def __init__(self, limit, window):
+                self.limit, self.window = limit, window
+                self.cur_start, self.cur, self.prev = 0, 0, 0
+
+            def allow(self, now):
+                start = now - now % self.window
+                if start != self.cur_start:
+                    self.prev = self.cur if start - self.cur_start == self.window else 0
+                    self.cur, self.cur_start = 0, start
+                weight = 1 - (now - start) / self.window          # how much of the previous window still counts
+                if self.prev * weight + self.cur + 1 > self.limit:
+                    return False
+                self.cur += 1
+                return True
+
+        rl = SlidingWindowCounter(limit=5, window=10)
+        print([rl.allow(t) for t in (0, 1, 2, 3, 4, 5)])          # 5 allowed, 6th blocked
+        print([rl.allow(t) for t in (10, 11, 12)])               # new window, but the previous one still weighs in
+      caption: Sliding window counter
+  quiz:
+    - q: Why must a Redis token-bucket update run as a Lua script?
+      options: ["Lua is faster than Python", "To make read-modify-write atomic, avoiding races between concurrent requests", "Redis requires it", "To avoid JSON"]
+      answer: 1
+      why: Two servers could read the same token count and both consume it, over-admitting.
+
+- id: sd-news-feed
+  track: system
+  week: 10
+  title: "Case study: news feed / timeline"
+  summary: Fan-out on write vs on read, the celebrity problem and ranking.
+  minutes: 12
+  xp: 30
+  requires: [sd-url-shortener]
+  sections:
+    - md: |
+        ## Requirements
+        Users post; users follow others; home feed shows recent posts from followees, newest first (maybe ranked). Feed load p99 < 300 ms. Eventual consistency is acceptable (a post may appear a few seconds later). **Read-heavy.**
+
+        ## Core decision: when do you build the feed?
+        | | Fan-out on **write** (push) | Fan-out on **read** (pull) |
+        |---|---|---|
+        | On post | Write post id into every follower's feed list (Redis list/sorted set) | Just store the post |
+        | On read | Read one precomputed list: O(1) | Query each followee's recent posts and merge: O(followees) |
+        | Pros | Fast reads | Cheap writes, no wasted work for inactive users |
+        | Cons | Write amplification: a user with 50 M followers = 50 M writes | Slow reads |
+
+        **Hybrid (the real answer):** push for normal users; for **celebrities** (followers above a threshold) *don't* push; merge their recent posts at read time. Skip pushing to inactive users.
+
+        ## Data
+        - `posts(post_id, author_id, text, ts)`, sharded by `author_id` or time-based ids (Snowflake-style IDs give roughly time-ordered keys).
+        - `follows(follower_id, followee_id)` in both directions for the two query patterns.
+        - `feed:{user_id}` = capped sorted set of `(post_id, ts)` in Redis (keep the latest ~800).
+
+        ## Flow
+        1. Post service stores the post, emits `PostCreated` to a queue (Kafka).
+        2. **Fan-out workers** read the event, fetch followers (paged), `ZADD` into each feed. Idempotent via `(user, post)`.
+        3. Feed service reads ids from Redis, **hydrates** posts/authors with a multi-get from cache/DB, applies filters (blocked users) and ranking, returns a page with a **cursor** (not offset).
+
+        ## Deep dives
+        Ranking (recency + engagement model), pagination stability with cursors, deleted posts (tombstones + filter at hydrate), cache warm-up for returning users, media via CDN.
+  quiz:
+    - q: "The celebrity problem in fan-out-on-write is…"
+      options: ["Too many reads", "One post triggers millions of feed writes", "Cache misses", "Slow logins"]
+      answer: 1
+      why: Write amplification. Hybrid designs skip pushing celebrity posts and merge them at read time.
+
+- id: sd-chat
+  track: system
+  week: 10
+  title: "Case study: chat / messaging service"
+  summary: Real-time delivery, ordering, offline users and presence at scale.
+  minutes: 12
+  xp: 30
+  requires: [sd-reliability]
+  sections:
+    - md: |
+        ## Requirements
+        1:1 and group chat (≤ 500 members), real-time delivery, message history, delivery/read receipts, offline delivery (push notifications), multi-device. Messages **must not be lost**; per-conversation **ordering**.
+
+        ## Connections
+        Clients keep a **WebSocket** to a **gateway** server (stateful connection, but the gateway is thin). A **session registry** (Redis: `user → gateway`) tells the system where a user is connected. LB is L4 or sticky L7 with graceful draining on deploy.
+
+        ## Message flow (1:1)
+        1. Sender → gateway → **Chat service**: assign a **monotonic per-conversation sequence number**, persist (so it's durable *before* ack), return `ack(seq)` to the sender.
+        2. Look up recipient's gateway in the registry; if online, push over the WebSocket; the client acks.
+        3. If offline, store as pending and trigger a **push notification**; on reconnect the client syncs "messages after seq N".
+
+        ## Ordering and IDs
+        Order inside a conversation using a per-conversation counter (single writer: partition by `conversation_id`, e.g. a Kafka partition or a DB row sequence). Don't trust client clocks.
+
+        ## Storage
+        Messages are append-heavy, read by `(conversation_id, seq range)`: **Cassandra/DynamoDB/HBase** style wide-column store, partition key `conversation_id`, clustering `seq`. Metadata (users, groups) in a relational DB.
+
+        ## Groups
+        Fan-out per member on the server side. For big groups store the message once and keep per-user cursors (`last_read_seq`). Receipts are a counter/bitmap per member.
+
+        ## Reliability
+        At-least-once delivery + client-side dedupe by `(conversation, seq)` / client message id. **Presence** via heartbeats with TTL in Redis (don't broadcast every flap). **E2E encryption** changes the picture: the server stores ciphertext and can't search or moderate it.
+  quiz:
+    - q: How do you guarantee per-conversation message ordering?
+      options: ["Client timestamps", "A single sequencer per conversation (e.g. partition by conversation id)", "Random UUIDs", "NTP"]
+      answer: 1
+      why: Serialising writes for one conversation through one partition/writer gives a total order without global coordination.
+
+- id: sd-order-management
+  track: system
+  week: 11
+  title: "Case study: order management & matching engine"
+  summary: "A finance-flavoured design: correctness-first, ordering, idempotency, audit trails and an order book you can run."
+  minutes: 14
+  xp: 35
+  requires: [sd-reliability]
+  sections:
+    - md: |
+        Your BlackRock background is an advantage here. Lean on it, but keep the answer general.
+
+        ## Requirements
+        Accept buy/sell **orders** (market/limit), match them (price-time priority), publish executions, maintain positions, **never lose or double-execute an order**, full **audit trail**, low and predictable latency, regulatory retention.
+
+        ## Principles that signal seniority
+        1. **Correctness over throughput.** Consistency beats availability for the ledger and the book.
+        2. **Single-writer per instrument.** Partition the order flow by symbol; each symbol's matching runs on one thread/process, sequentially. No locks, deterministic, replayable.
+        3. **Event sourcing:** the source of truth is an append-only log of events (`OrderAccepted`, `Trade`, `OrderCancelled`). State (the book, positions) is a projection that can be rebuilt by replay, which also gives you audit and disaster recovery.
+        4. **Idempotency** on `client_order_id`. A retried submit returns the original acknowledgement.
+        5. **Separate the paths:** the hot path (validate → sequence → match → ack) stays tiny; risk checks that need other data (credit limits) happen before sequencing; reporting, positions and notifications are asynchronous consumers of the event stream.
+
+        ## Components
+        Gateway/FIX adapter → **order validation & pre-trade risk** → **sequencer** (assigns global/per-symbol sequence, writes to a replicated log) → **matching engine per symbol** → event log → consumers (trade reporting, position/P&L service, market data publisher, notifications, data warehouse).
+
+        ## Failure handling
+        - Primary/secondary matching engines consume the **same log**; failover = promote the replica that has applied up to sequence N.
+        - Exactly-once *effects* via at-least-once delivery + dedupe on sequence number.
+        - Cancel/replace races: the engine's ordered log is the arbiter. A cancel for an already-filled order is rejected deterministically.
+
+        ## Data
+        Orders and trades in a relational DB (strong consistency, SQL for reconciliation); the hot book in memory; snapshots + log for recovery. Money as **integers (minor units) or Decimal**, never float.
+    - code: |
+        import heapq, itertools
+        from dataclasses import dataclass
+
+        @dataclass
+        class Trade:
+            buy_id: int; sell_id: int; price: int; qty: int
+
+        class OrderBook:
+            """Price-time priority limit order book. Prices are integers (e.g. cents)."""
+            def __init__(self):
+                self.bids, self.asks = [], []          # bids: max-heap via -price; asks: min-heap
+                self.seq = itertools.count()           # time priority tiebreaker
+                self.trades = []
+
+            def submit(self, oid, side, price, qty):
+                book, opp = (self.bids, self.asks) if side == "buy" else (self.asks, self.bids)
+                while qty and opp:
+                    key, _, other_id, other_qty = opp[0]
+                    best = key if side == "buy" else -key
+                    if (side == "buy" and price < best) or (side == "sell" and price > best):
+                        break                           # no longer crosses
+                    fill = min(qty, other_qty)
+                    b, s = (oid, other_id) if side == "buy" else (other_id, oid)
+                    self.trades.append(Trade(b, s, best, fill))
+                    qty -= fill
+                    if fill == other_qty:
+                        heapq.heappop(opp)
+                    else:
+                        opp[0] = (key, opp[0][1], other_id, other_qty - fill)
+                if qty:                                  # rest the remainder on the book
+                    key = -price if side == "buy" else price
+                    heapq.heappush(book, (key, next(self.seq), oid, qty))
+
+        ob = OrderBook()
+        ob.submit(1, "sell", 101, 5)
+        ob.submit(2, "sell", 100, 3)
+        ob.submit(3, "buy", 101, 6)        # takes 3 @100 first (better price), then 3 @101
+        print(ob.trades)
+        print("resting asks:", [(k, q) for k, _, _, q in ob.asks])
+      caption: A working price-time priority order book
+  quiz:
+    - q: Why partition a matching engine by instrument and run each partition single-threaded?
+      options: ["To waste cores", "Deterministic ordering without locks, and replayable state", "Regulators require threads", "To reduce memory"]
+      answer: 1
+      why: One sequential writer per book gives a total order, trivial correctness reasoning and exact replay from the log.
+    - q: Representing prices with floats in a trading system is…
+      options: ["Fine", "Dangerous: rounding error. Use integers in minor units or Decimal", "Faster and therefore preferred", "Required by FIX"]
+      answer: 1
+      why: Binary floating point can't represent most decimal prices exactly and errors accumulate.

@@ -1,4 +1,4 @@
-import { dueReviews, nextLessons, nextProblems, patternReadiness } from '../lib/plan';
+import { dueReviews, nextLessons, nextProblems, patternReadiness, week } from '../lib/plan';
 import { useProgress, levelFor } from '../lib/progress';
 import { computeStreak, dayKey } from '../lib/srs';
 import { lessons, problems } from '../lib/content';
@@ -16,6 +16,9 @@ export function Today() {
   const last14 = Array.from({ length: 14 }, (_, i) => dayKey(Date.now() - (13 - i) * DAY));
   const lv = levelFor(s.xp);
   const daysIn = Math.max(1, Math.ceil((Date.now() - s.startedAt) / DAY));
+  const planWeek = Math.min(12, Math.floor((daysIn - 1) / 7) + 1);
+  const planned = lessons.filter((l) => week(l) <= planWeek);
+  const behind = planned.filter((l) => !s.lessonsDone[l.id]);
 
   return (
     <div className="page">
@@ -29,6 +32,14 @@ export function Today() {
           <div className="heat">{last14.map((d) => <i key={d} className={s.activeDays.includes(d) ? 'on' : ''} title={d} />)}</div>
           <div className="muted">last 14 days</div>
         </div>
+      </div>
+
+      <div className="card pace">
+        <div className="row"><b>Week {planWeek} of 12</b>
+          <span className="muted">{planned.length - behind.length}/{planned.length} planned lessons done</span>
+          <span className={behind.length === 0 ? 'pill good' : 'pill'}>{behind.length === 0 ? 'on track' : `${behind.length} behind`}</span></div>
+        <div className="bar-track"><div style={{ width: `${(planned.length - behind.length) / Math.max(1, planned.length) * 100}%` }} /></div>
+        {behind.length > 0 && <div className="muted small">Next up: {behind.slice(0, 3).map((l) => l.title).join(' · ')}</div>}
       </div>
 
       <section>

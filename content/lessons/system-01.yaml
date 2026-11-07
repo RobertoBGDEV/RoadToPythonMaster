@@ -1,0 +1,311 @@
+- id: sd-framework
+  track: system
+  week: 6
+  title: The system design interview framework
+  summary: A 45-minute structure that keeps you driving the conversation, plus what changes between SWE II and SWE III.
+  minutes: 10
+  xp: 30
+  sections:
+    - md: |
+        ## What they're evaluating
+        - **SWE II:** can you build a sensible, working design for a well-scoped system and explain your choices?
+        - **SWE III:** can you *drive* ambiguity, quantify, identify the real bottleneck, name trade-offs and discuss failure modes and operations, without being led?
+
+        ## The framework (45 min)
+        | Step | Time | What you do |
+        |---|---|---|
+        | 1. Requirements | 5 | Functional (core use cases, 3-4 max), non-functional (latency, availability vs consistency, scale), out of scope. **Ask, then confirm.** |
+        | 2. Estimation | 3-5 | Users, QPS (avg and peak), storage/year, bandwidth. Only to *decide* things (do we need sharding? a cache?). |
+        | 3. API | 3 | 3-5 endpoints/RPCs with key params and idempotency. |
+        | 4. Data model | 5 | Entities, keys, access patterns → SQL or NoSQL and why. |
+        | 5. High-level design | 10 | Boxes and arrows: clients, LB, services, DB, cache, queue. Walk through the main flows end to end. |
+        | 6. Deep dives | 10-15 | The 1-2 hardest parts: hot keys, fan-out, consistency, ordering, idempotency. Let the interviewer steer. |
+        | 7. Bottlenecks & wrap-up | 5 | Failure modes, monitoring, scaling next 10x, what you'd cut for v1. |
+
+        ## Phrases that signal seniority
+        - *"Before I design, the read/write ratio decides a lot, which is it?"*
+        - *"I'd start with a single Postgres and a cache. We only need sharding above ~X writes/s, so I'll note it as the next step."*
+        - *"There's a trade-off here: A gives us X but costs Y. Given the requirement of Z, I'd choose A."*
+        - *"What happens when this component is down? We degrade by…"*
+    - md: |
+        ## Common failure patterns
+        - Drawing 15 boxes before knowing the requirements.
+        - Reciting technologies (Kafka! Redis! Cassandra!) without saying *why this problem needs them*.
+        - Never mentioning failure, monitoring, or data consistency.
+        - Not checking in with the interviewer: it's a conversation.
+  quiz:
+    - q: "What's the main purpose of capacity estimation in the interview?"
+      options: ["Show off arithmetic", "Decide whether you need things like sharding, caching or async processing", "Pick a programming language", "Fill time"]
+      answer: 1
+      why: Numbers justify architectural choices. If peak is 50 QPS you don't need a distributed system.
+
+- id: sd-estimation
+  track: system
+  week: 6
+  title: Back-of-the-envelope estimation
+  summary: The numbers to memorise and a calculator you can edit to size any system in 2 minutes.
+  minutes: 8
+  xp: 25
+  requires: [sd-framework]
+  sections:
+    - md: |
+        ### Numbers every engineer should know
+        | Operation | Time |
+        |---|---|
+        | L1 cache reference | ~1 ns |
+        | Main memory reference | ~100 ns |
+        | SSD random read | ~100 µs |
+        | Read 1 MB sequentially from memory / SSD | ~10 µs / ~1 ms |
+        | Network round trip within a datacentre | ~0.5 ms |
+        | Disk seek (HDD) | ~10 ms |
+        | Round trip across continents | ~150 ms |
+
+        **Rules of thumb:** 1 day ≈ 10⁵ seconds (86,400). 1 M req/day ≈ 12 req/s. **Peak ≈ 2-10× average.** A single modern server handles ~1-10k simple req/s. One Postgres node comfortably does a few thousand writes/s. Powers of two: 2¹⁰ ≈ 10³ (K), 2²⁰ ≈ 10⁶ (M), 2³⁰ ≈ 10⁹ (G).
+    - code: |
+        def size_system(dau, actions_per_user, read_write_ratio, bytes_per_record, retention_years, peak_factor=3):
+            day = 86_400
+            writes_day = dau * actions_per_user
+            wps = writes_day / day
+            rps = wps * read_write_ratio
+            storage_tb = writes_day * 365 * retention_years * bytes_per_record / 1e12
+            print(f"avg writes/s : {wps:,.0f}   peak: {wps * peak_factor:,.0f}")
+            print(f"avg reads/s  : {rps:,.0f}   peak: {rps * peak_factor:,.0f}")
+            print(f"storage      : {storage_tb:,.1f} TB over {retention_years} y (before replication x3 = {storage_tb * 3:,.1f} TB)")
+
+        # Example: a URL shortener. 100M new URLs/month, 100:1 read/write, 500 B per record, keep 5 years
+        size_system(dau=100e6 / 30, actions_per_user=1, read_write_ratio=100, bytes_per_record=500, retention_years=5)
+      caption: "Edit the inputs: this is the calculator to run in your head"
+    - md: |
+        **How to use the result:** 40 writes/s peak ≈ trivial; 4,000 reads/s needs a cache and a couple of app servers but not sharding; 1 TB/yr fits a single database for a while, so say *"shard later by key if we exceed ~5 TB or ~5k writes/s"*.
+  quiz:
+    - q: Roughly how many requests per second is 1 million requests per day?
+      options: ["~1", "~12", "~120", "~1,200"]
+      answer: 1
+      why: 1,000,000 / 86,400 ≈ 11.6.
+
+- id: sd-building-blocks
+  track: system
+  week: 7
+  title: "Building blocks: load balancers, caching, CDNs"
+  summary: What each component is for, how it fails, and the questions interviewers ask about it.
+  minutes: 12
+  xp: 30
+  requires: [sd-framework]
+  sections:
+    - md: |
+        ## Load balancing
+        - **L4** (TCP) is fast and dumb; **L7** (HTTP) can route by path/header, terminate TLS, do canary releases.
+        - Algorithms: round robin, least connections, consistent hashing (sticky by key, e.g. cache shards).
+        - The LB itself must not be a single point of failure: active-active pair, DNS or anycast in front.
+        - Keep app servers **stateless** (session in Redis/JWT), so any server can handle any request and you can scale horizontally.
+
+        ## Caching
+        | Strategy | How | Good for | Risk |
+        |---|---|---|---|
+        | **Cache-aside** | App reads cache, on miss reads DB and fills cache | Default choice | Stale data, stampede |
+        | **Read-through** | Cache loads from DB itself | Simpler app code | Same |
+        | **Write-through** | Write to cache and DB together | Read-heavy, needs fresh | Slower writes |
+        | **Write-back** | Write to cache, flush to DB later | Write-heavy, tolerates loss | Data loss on crash |
+
+        - **Invalidation** is the hard part. Prefer TTL + explicit delete on write; accept bounded staleness when the requirements allow.
+        - **Cache stampede:** a hot key expires and 1,000 requests hit the DB. Fixes: request coalescing (single flight), jittered TTLs, refresh-ahead, serve-stale-while-revalidate.
+        - **Hot keys:** replicate the key across shards or add a local in-process cache in front.
+        - **Eviction:** LRU is the default; LFU for skewed popularity.
+
+        ## CDN
+        Edge caches for static assets and cacheable API responses. Cuts latency and origin load. Use `Cache-Control`, versioned URLs for instant invalidation (`app.3f9a.js`).
+    - code: |
+        # A tiny cache-aside with TTL and single-flight-ish protection, so you can talk about it concretely
+        import threading, time
+
+        class CacheAside:
+            def __init__(self, loader, ttl):
+                self.loader, self.ttl = loader, ttl
+                self.data, self.locks, self.guard = {}, {}, threading.Lock()
+                self.loads = 0
+
+            def get(self, key, now=None):
+                now = time.monotonic() if now is None else now
+                hit = self.data.get(key)
+                if hit and hit[1] > now:
+                    return hit[0]
+                with self.guard:
+                    lock = self.locks.setdefault(key, threading.Lock())
+                with lock:                                  # only one loader per key at a time
+                    hit = self.data.get(key)
+                    if hit and hit[1] > now:                # someone else loaded it while we waited
+                        return hit[0]
+                    self.loads += 1
+                    value = self.loader(key)
+                    self.data[key] = (value, now + self.ttl)
+                    return value
+
+        c = CacheAside(lambda k: k.upper(), ttl=10)
+        print([c.get("a", now=0), c.get("a", now=5), c.get("a", now=11)], "db loads:", c.loads)
+      caption: "Cache-aside with TTL and per-key locking (no stampede)"
+  quiz:
+    - q: A very popular key expires and the database is overwhelmed. This is a…
+      options: ["Cache penetration", "Cache stampede (thundering herd)", "Split brain", "Hot partition"]
+      answer: 1
+      why: Many concurrent misses for the same key. Mitigate with coalescing, jittered TTL or serve-stale.
+
+- id: sd-data
+  track: system
+  week: 8
+  title: "Data: SQL vs NoSQL, indexing, replication, sharding, consistency"
+  summary: The storage decisions that make or break a design, including a consistent-hashing demo.
+  minutes: 16
+  xp: 35
+  requires: [sd-building-blocks]
+  sections:
+    - md: |
+        ## Pick storage from the access pattern
+        | Need | Reach for |
+        |---|---|
+        | Relationships, transactions, ad-hoc queries | **PostgreSQL / MySQL** (default!) |
+        | Huge write volume, key-based access, easy horizontal scale | **Cassandra / DynamoDB** (wide-column / KV) |
+        | Flexible documents, nested data | MongoDB |
+        | Caching, counters, leaderboards, rate limits | Redis |
+        | Full-text search | Elasticsearch / OpenSearch |
+        | Blobs | S3 / object storage |
+        | Analytics (columnar, scans) | BigQuery / Snowflake / ClickHouse |
+
+        ## Indexes
+        - **B-tree** (most RDBMS): good for range + point reads, slower random writes.
+        - **LSM-tree** (Cassandra, RocksDB): fast sequential writes, reads check multiple levels (bloom filters help).
+        - Index = faster reads, slower writes, more storage. Composite index order matters (leftmost prefix).
+
+        ## Replication
+        - **Leader/follower:** scale reads, failover. Followers lag (*replication lag*), so reading your own writes may need the leader or a session pinned to it.
+        - **Multi-leader / leaderless (quorums):** write availability across regions; need conflict resolution.
+        - Quorum rule: `R + W > N` gives read-after-write consistency.
+
+        ## Sharding (partitioning)
+        - **Range:** good for scans, risks hot shards (all new IDs go to the last one).
+        - **Hash:** even load, no range scans. **Consistent hashing** limits moved keys when nodes change.
+        - Cross-shard joins/transactions get expensive, so choose the shard key from the dominant access pattern (e.g. `user_id`).
+
+        ## CAP and PACELC
+        During a **P**artition you pick **C**onsistency or **A**vailability. *Else* (normal operation) you trade **L**atency vs **C**onsistency. Banking ledger → consistency; social feed → availability.
+
+        ## Transactions
+        ACID, isolation levels (read committed, repeatable read, serializable) and anomalies (dirty/non-repeatable/phantom reads, lost update, write skew). Use **optimistic locking** (version column) for low contention, **`SELECT … FOR UPDATE`** for high contention.
+    - code: |
+        import bisect, hashlib
+
+        class Ring:
+            """Consistent hashing with virtual nodes: adding a node moves only ~1/N of the keys."""
+            def __init__(self, nodes, vnodes=100):
+                self.vnodes, self.ring, self.keys = vnodes, {}, []
+                for n in nodes:
+                    self.add(n)
+
+            def _h(self, s):
+                return int(hashlib.md5(s.encode()).hexdigest(), 16)
+
+            def add(self, node):
+                for i in range(self.vnodes):
+                    h = self._h(f"{node}#{i}")
+                    self.ring[h] = node
+                    bisect.insort(self.keys, h)
+
+            def node_for(self, key):
+                i = bisect.bisect(self.keys, self._h(key)) % len(self.keys)
+                return self.ring[self.keys[i]]
+
+        keys = [f"user{i}" for i in range(10_000)]
+        before = Ring(["A", "B", "C"])
+        owner_before = {k: before.node_for(k) for k in keys}
+        after = Ring(["A", "B", "C", "D"])
+        moved = sum(1 for k in keys if after.node_for(k) != owner_before[k])
+        print(f"keys moved when adding a 4th node: {moved / len(keys):.0%}  (modulo hashing would move ~75%)")
+      caption: Consistent hashing with virtual nodes
+  quiz:
+    - q: Why use consistent hashing instead of `hash(key) % N`?
+      options: ["It's faster", "Adding/removing a node only remaps a small fraction of keys", "It sorts keys", "It avoids collisions"]
+      answer: 1
+      why: With modulo, changing N reshuffles almost every key, causing a cache miss storm or massive data movement.
+    - q: With N=3 replicas, W=2 and R=2, reads see the latest write because…
+      options: ["R + W > N so read and write quorums overlap", "Leaders are faster", "Clocks are synchronised", "It doesn't"]
+      answer: 0
+      why: Any read quorum shares at least one node with the most recent write quorum.
+
+- id: sd-reliability
+  track: system
+  week: 9
+  title: "Async processing and reliability: queues, idempotency, retries"
+  summary: "Message queues, delivery guarantees, idempotent consumers, backoff with jitter, circuit breakers and observability."
+  minutes: 14
+  xp: 35
+  requires: [sd-data]
+  sections:
+    - md: |
+        ## Queues and streams
+        - Decouple producers and consumers, absorb bursts, enable retries. **RabbitMQ/SQS**: task queues. **Kafka**: partitioned, replayable log (ordering *per partition*; scale consumers via consumer groups).
+        - **Delivery semantics:** at-most-once (may lose), **at-least-once** (may duplicate; the practical default), exactly-once (really: at-least-once + idempotent processing).
+        - **Dead-letter queues** for poison messages. **Backpressure** so a slow consumer doesn't blow memory.
+
+        ## Idempotency is the key to retries
+        A retried request must not charge twice. Use an **idempotency key** (client-generated UUID) stored with the result; return the stored result on replay.
+
+        ## Retries done right
+        Retry only idempotent/transient failures, with **exponential backoff + jitter**, a retry budget and a timeout on every call. Unbounded retries cause **retry storms** that take down the dependency.
+
+        ## Circuit breaker
+        After N failures, *open*: fail fast for a cooldown, then *half-open*: let a probe through. Protects both sides.
+
+        ## Observability
+        **Metrics** (RED: rate, errors, duration; USE for resources), **logs** (structured, with request IDs), **traces** (distributed). Define **SLIs/SLOs** (e.g. 99.9% of requests < 300 ms) and alert on burn rate, not CPU.
+    - code: |
+        import random
+
+        # Idempotent consumer: processing the same message twice has the same effect as once
+        processed, balance = {}, {"acct": 100}
+        def handle_payment(msg_id, amount):
+            if msg_id in processed:                # replay: return the saved result, don't re-apply
+                return processed[msg_id]
+            balance["acct"] -= amount
+            processed[msg_id] = balance["acct"]
+            return processed[msg_id]
+
+        print([handle_payment("m1", 30), handle_payment("m1", 30), handle_payment("m2", 20)])
+
+        # Exponential backoff with full jitter
+        def backoff_delays(retries, base=0.1, cap=5.0, seed=7):
+            rng = random.Random(seed)
+            return [round(rng.uniform(0, min(cap, base * 2 ** i)), 3) for i in range(retries)]
+        print(backoff_delays(6))
+
+        # A minimal circuit breaker
+        class Breaker:
+            def __init__(self, threshold=3, cooldown=10):
+                self.fails, self.threshold, self.cooldown, self.opened_at = 0, threshold, cooldown, None
+            def call(self, fn, now):
+                if self.opened_at is not None:
+                    if now - self.opened_at < self.cooldown:
+                        raise RuntimeError("circuit open")
+                    self.opened_at = None            # half-open: allow one probe
+                try:
+                    r = fn(); self.fails = 0; return r
+                except Exception:
+                    self.fails += 1
+                    if self.fails >= self.threshold: self.opened_at = now
+                    raise
+
+        def boom(): raise ValueError("down")
+        b = Breaker()
+        out = []
+        for t in range(5):
+            try: b.call(boom, now=t)
+            except Exception as e: out.append(str(e))
+        print(out)
+      caption: Idempotent consumer, backoff with jitter, circuit breaker
+  quiz:
+    - q: Why is "exactly-once" usually implemented as at-least-once plus…
+      options: ["Bigger machines", "Idempotent processing / deduplication", "Faster networks", "Fewer partitions"]
+      answer: 1
+      why: Networks can't guarantee a message is delivered precisely once, but a consumer that ignores duplicates behaves as if it was.
+    - q: Why add jitter to exponential backoff?
+      options: ["To slow clients", "To desynchronise retries so clients don't hammer the server simultaneously", "To log more", "For fairness"]
+      answer: 1
+      why: Without jitter all clients retry at the same instants, creating synchronised load spikes.

@@ -14,13 +14,20 @@ Python runs **in your browser** (Pyodide/CPython in a Web Worker), so every less
 - **Console**: persistent Python scratchpad.
 - **Story bank**: STAR stories for the behavioral round.
 
+## Content (all executed and verified)
+- **46 lessons** across 5 tracks, each with runnable snippets, Java ↔ Python tabs and quick-check quizzes.
+- **110 problems** across 17 algorithm patterns + low-level design, with hidden tests. Every reference solution is run against its tests in real CPython (`npm run validate`) **and** in the browser's Pyodide (`node scripts/e2e-all-solutions.cjs`).
+- A 12-week plan: each lesson has a `week`, and Today shows whether you're on pace for interviews in ~3 months.
+
 ## Run it
 ```bash
 npm install
 npm run dev        # http://localhost:5173
 npm run validate   # runs every reference solution & lesson snippet in real python3
 npm run build      # validate structure, typecheck, bundle to dist/
-node scripts/e2e.cjs   # browser smoke test (needs Playwright + a build)
+npm test           # unit tests (SRS, planning, content graph integrity)
+node scripts/e2e.cjs                 # browser smoke test: runner, timeouts, review queue, mock, stories…
+node scripts/e2e-all-solutions.cjs   # every reference solution through the real UI + Pyodide
 ```
 
 ## Adding content

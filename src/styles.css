@@ -86,3 +86,5 @@ pre.java { background: #1d1a14; border: 1px solid #3d3322; border-radius: 8px; p
   .side nav { flex-direction: row; flex-wrap: wrap; } .stats { margin: 0; } .workspace { grid-template-columns: 1fr; } .pane.statement { position: static; max-height: none; }
   .grid3 { grid-template-columns: 1fr; } .ready { grid-template-columns: 1fr 1fr 40px; }
 }
+
+.pace { margin: 14px 0; display: grid; gap: 8px; }
