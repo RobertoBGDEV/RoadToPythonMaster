@@ -10,7 +10,7 @@ sorted(nums)
 `;
 
 export function ConsolePage() {
-  const [code, setCode] = useState(() => localStorage.getItem('rtpm:scratch') ?? START);
+  const [code, setCode] = useState(() => { try { return localStorage.getItem('rtpm:scratch') ?? START; } catch { return START; } });
   const [lines, setLines] = useState<OutLine[]>([]);
   const [busy, setBusy] = useState(false);
   const state = usePyState();

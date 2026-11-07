@@ -52,6 +52,16 @@ const assert = require('node:assert');
     await page.waitForFunction(() => document.querySelector('.output')?.textContent.includes('alive'), null, { timeout: 30000 });
     console.log('ok infinite loop interrupted + recovered');
 
+    // 3a. Output without a trailing newline must not be lost (regression)
+    await page.goto(base + 'console');
+    await page.locator('.cm-content').first().click();
+    await page.keyboard.press('Control+A');
+    await page.keyboard.insertText('print("a", end="")\nprint("b", end="")');
+    await page.waitForFunction(() => /Run/.test(document.querySelector('.btn.primary')?.textContent || ''), null, { timeout: 60000 });
+    await page.locator('.btn.primary').first().click();
+    await page.waitForFunction(() => document.querySelector('.output')?.textContent.trim() === 'ab', null, { timeout: 30000 });
+    console.log('ok output without trailing newline');
+
     // 3b. Spaced repetition: an overdue solved problem shows up under Review
     await page.evaluate(() => {
       const st = JSON.parse(localStorage.getItem('rtpm:v1'));

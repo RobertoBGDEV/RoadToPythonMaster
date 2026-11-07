@@ -22,9 +22,27 @@ onmessage = async (ev) => {
     postMessage({ type: 'done', id: m.id });
     return;
   }
-  const emit = (stream) => (text) => postMessage({ type: 'out', id: m.id, stream, text });
-  pyodide.setStdout({ batched: emit('stdout') });
-  pyodide.setStderr({ batched: emit('stderr') });
+  // Raw (unbuffered) writers + our own line splitter, so text without a trailing newline isn't lost.
+  const decoders = { stdout: new TextDecoder(), stderr: new TextDecoder() };
+  const pending = { stdout: '', stderr: '' };
+  const emitLine = (stream, text) => postMessage({ type: 'out', id: m.id, stream, text });
+  const writer = (stream) => ({
+    write: (buf) => {
+      pending[stream] += decoders[stream].decode(buf, { stream: true });
+      const parts = pending[stream].split('\n');
+      pending[stream] = parts.pop();
+      parts.forEach((line) => emitLine(stream, line));
+      return buf.length;
+    },
+  });
+  pyodide.setStdout(writer('stdout'));
+  pyodide.setStderr(writer('stderr'));
+  const flush = () => {
+    try { pyodide.runPython('import sys\nsys.stdout.flush()\nsys.stderr.flush()'); } catch (e) { /* ignore */ }
+    for (const stream of ['stdout', 'stderr']) {
+      if (pending[stream]) { emitLine(stream, pending[stream]); pending[stream] = ''; }
+    }
+  };
   try {
     if (m.type === 'run') {
       const g = m.persist ? replGlobals : pyodide.globals.get('dict')();
@@ -34,6 +52,7 @@ onmessage = async (ev) => {
         shown = pyodide.runPython('repr', { globals: pyodide.globals })(value);
       }
       if (value && value.destroy) value.destroy();
+      flush();
       postMessage({ type: 'done', id: m.id, value: shown });
     } else if (m.type === 'test') {
       pyodide.globals.set('_rtpm_code', m.code);
@@ -46,6 +65,7 @@ onmessage = async (ev) => {
     // Trim Pyodide's internal frames: keep the part from the user's <exec> frame onwards.
     const idx = msg.indexOf('File "<exec>"');
     if (idx > 0) msg = 'Traceback (most recent call last):\n  ' + msg.slice(idx);
+    flush();
     postMessage({ type: 'done', id: m.id, error: msg.trim() });
   }
 };
