@@ -144,3 +144,125 @@
         return list(groups.values())
   complexity: O(n · k log k) time, O(n · k) space
   explain: Counting letters (a 26-tuple key) brings each word to O(k).
+
+- id: top-k-frequent
+  title: Top K Frequent Elements
+  pattern: arrays-hashing
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/top-k-frequent-elements/
+  fn: top_k_frequent
+  compare: unordered
+  statement: |
+    Return the `k` most frequent elements of `nums`, in any order. The answer is guaranteed to be unique.
+
+    ```
+    nums = [1,1,1,2,2,3], k = 2  ->  [1, 2]
+    ```
+
+    **Follow-up:** can you beat O(n log n)?
+  starter: |
+    def top_k_frequent(nums, k):
+        pass
+  tests:
+    - {args: [[1, 1, 1, 2, 2, 3], 2], expected: [1, 2]}
+    - {args: [[1], 1], expected: [1]}
+    - {args: [[4, 4, 4, 5, 5, 6, 6, 6, 6], 2], expected: [4, 6], hidden: true}
+    - {args: [[-1, -1, 2, 2, 2, 3], 1], expected: [2], hidden: true}
+  hints:
+    - Count first. Then you need the k largest counts.
+    - Bucket sort: index = frequency, so no sorting is needed.
+  solution: |
+    def top_k_frequent(nums, k):
+        from collections import Counter
+        count = Counter(nums)
+        buckets = [[] for _ in range(len(nums) + 1)]
+        for val, c in count.items():
+            buckets[c].append(val)
+        out = []
+        for c in range(len(buckets) - 1, 0, -1):
+            for v in buckets[c]:
+                out.append(v)
+                if len(out) == k:
+                    return out
+  complexity: O(n) time, O(n) space
+  explain: '`Counter.most_common(k)` is O(n log k) and perfectly fine in an interview if you say so. Bucket sort is the O(n) answer.'
+
+- id: product-except-self
+  title: Product of Array Except Self
+  pattern: arrays-hashing
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/product-of-array-except-self/
+  fn: product_except_self
+  statement: |
+    Return a list `answer` where `answer[i]` is the product of every element of `nums` **except** `nums[i]`. Do it in O(n) **without using division**.
+
+    ```
+    [1,2,3,4] -> [24,12,8,6]
+    [-1,1,0,-3,3] -> [0,0,9,0,0]
+    ```
+  starter: |
+    def product_except_self(nums):
+        pass
+  tests:
+    - {args: [[1, 2, 3, 4]], expected: [24, 12, 8, 6]}
+    - {args: [[-1, 1, 0, -3, 3]], expected: [0, 0, 9, 0, 0]}
+    - {args: [[2, 3]], expected: [3, 2], hidden: true}
+    - {args: [[0, 0, 2]], expected: [0, 0, 0], hidden: true}
+    - {args: [[5, 1, 1, 1]], expected: [1, 5, 5, 5], hidden: true}
+  hints:
+    - answer[i] = (product of everything left of i) * (product of everything right of i).
+    - Fill the result with prefix products, then sweep from the right with a running suffix.
+  solution: |
+    def product_except_self(nums):
+        n = len(nums)
+        out = [1] * n
+        pre = 1
+        for i in range(n):
+            out[i] = pre
+            pre *= nums[i]
+        suf = 1
+        for i in range(n - 1, -1, -1):
+            out[i] *= suf
+            suf *= nums[i]
+        return out
+  complexity: O(n) time, O(1) extra space (output excluded)
+  explain: Prefix/suffix products are a pattern that returns in range-query problems.
+
+- id: longest-consecutive
+  title: Longest Consecutive Sequence
+  pattern: arrays-hashing
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/longest-consecutive-sequence/
+  fn: longest_consecutive
+  statement: |
+    Given an unsorted list `nums`, return the length of the longest run of consecutive integers (e.g. 4,5,6,7) that can be formed from its values. Must run in **O(n)**.
+
+    ```
+    [100,4,200,1,3,2] -> 4     (1,2,3,4)
+    [0,3,7,2,5,8,4,6,0,1] -> 9
+    ```
+  starter: |
+    def longest_consecutive(nums):
+        pass
+  tests:
+    - {args: [[100, 4, 200, 1, 3, 2]], expected: 4}
+    - {args: [[0, 3, 7, 2, 5, 8, 4, 6, 0, 1]], expected: 9}
+    - {args: [[]], expected: 0, hidden: true}
+    - {args: [[1, 2, 0, 1]], expected: 3, hidden: true}
+    - {args: [[9, 1, 4, 7, 3, -1, 0, 5, 8, -1, 6]], expected: 7, hidden: true}
+  hints:
+    - Put everything in a set. Which numbers are the *start* of a sequence?
+    - A number x starts a sequence iff x - 1 is not in the set. Only then walk upward.
+  solution: |
+    def longest_consecutive(nums):
+        s = set(nums)
+        best = 0
+        for x in s:
+            if x - 1 not in s:
+                y = x
+                while y + 1 in s:
+                    y += 1
+                best = max(best, y - x + 1)
+        return best
+  complexity: O(n) time, O(n) space
+  explain: Each element is visited at most twice (once as a candidate start, once while walking), so the nested loop is still linear.

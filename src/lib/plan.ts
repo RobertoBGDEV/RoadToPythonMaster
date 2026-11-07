@@ -34,7 +34,7 @@ export function nextProblems(s: State, n = 2): Problem[] {
 }
 
 export function patternReadiness(s: State) {
-  const patterns = lessons.filter((l) => l.track === 'algo');
+  const patterns = lessons.filter((l) => l.track === 'algo' && problemsForPattern(l.id).length > 0);
   return patterns.map((l) => {
     const ps = problemsForPattern(l.id);
     const weights = { easy: 1, medium: 2, hard: 3 };

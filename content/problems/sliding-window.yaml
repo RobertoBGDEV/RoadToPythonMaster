@@ -1,0 +1,206 @@
+- id: best-time-stock
+  title: Best Time to Buy and Sell Stock
+  pattern: sliding-window
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/best-time-to-buy-and-sell-stock/
+  fn: max_profit
+  statement: |
+    `prices[i]` is a stock's price on day `i`. Choose one day to buy and a **later** day to sell. Return the maximum profit, or `0` if no profit is possible.
+
+    ```
+    [7,1,5,3,6,4] -> 5   (buy at 1, sell at 6)
+    [7,6,4,3,1]   -> 0
+    ```
+  starter: |
+    def max_profit(prices):
+        pass
+  tests:
+    - {args: [[7, 1, 5, 3, 6, 4]], expected: 5}
+    - {args: [[7, 6, 4, 3, 1]], expected: 0}
+    - {args: [[1]], expected: 0, hidden: true}
+    - {args: [[2, 4, 1]], expected: 2, hidden: true}
+    - {args: [[3, 2, 6, 5, 0, 3]], expected: 4, hidden: true}
+  hints:
+    - Track the cheapest price seen so far. What is the best sale today?
+  solution: |
+    def max_profit(prices):
+        lo = float("inf")
+        best = 0
+        for p in prices:
+            lo = min(lo, p)
+            best = max(best, p - lo)
+        return best
+  complexity: O(n) time, O(1) space
+  explain: The "window" is [cheapest day so far, today]; it is the simplest sliding-window shape.
+
+- id: longest-substring-no-repeat
+  title: Longest Substring Without Repeating Characters
+  pattern: sliding-window
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/longest-substring-without-repeating-characters/
+  fn: length_of_longest_substring
+  statement: |
+    Return the length of the longest substring of `s` with no repeated characters.
+
+    ```
+    "abcabcbb" -> 3
+    "bbbbb"    -> 1
+    "pwwkew"   -> 3
+    ```
+  starter: |
+    def length_of_longest_substring(s):
+        pass
+  tests:
+    - {args: ["abcabcbb"], expected: 3}
+    - {args: ["bbbbb"], expected: 1}
+    - {args: ["pwwkew"], expected: 3}
+    - {args: [""], expected: 0, hidden: true}
+    - {args: ["abba"], expected: 2, hidden: true}
+    - {args: ["tmmzuxt"], expected: 5, hidden: true}
+  hints:
+    - Expand the right edge; when a duplicate appears, move the left edge past it.
+  solution: |
+    def length_of_longest_substring(s):
+        last = {}
+        l = best = 0
+        for r, ch in enumerate(s):
+            if ch in last and last[ch] >= l:
+                l = last[ch] + 1
+            last[ch] = r
+            best = max(best, r - l + 1)
+        return best
+  complexity: O(n) time, O(k) space
+  explain: 'The `last[ch] >= l` check matters (see "abba"), because old entries outside the window must be ignored.'
+
+- id: char-replacement
+  title: Longest Repeating Character Replacement
+  pattern: sliding-window
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/longest-repeating-character-replacement/
+  fn: character_replacement
+  statement: |
+    You may change at most `k` characters of the uppercase string `s` to any other letter. Return the length of the longest substring containing a single repeated letter after at most `k` changes.
+
+    ```
+    s = "AABABBA", k = 1 -> 4
+    ```
+  starter: |
+    def character_replacement(s, k):
+        pass
+  tests:
+    - {args: ["ABAB", 2], expected: 4}
+    - {args: ["AABABBA", 1], expected: 4}
+    - {args: ["A", 0], expected: 1, hidden: true}
+    - {args: ["ABCDE", 1], expected: 2, hidden: true}
+    - {args: ["AAAA", 2], expected: 4, hidden: true}
+  hints:
+    - A window is valid if (window length - count of its most common letter) <= k.
+  solution: |
+    def character_replacement(s, k):
+        from collections import Counter
+        cnt = Counter()
+        l = best = 0
+        for r, ch in enumerate(s):
+            cnt[ch] += 1
+            while (r - l + 1) - max(cnt.values()) > k:
+                cnt[s[l]] -= 1
+                l += 1
+            best = max(best, r - l + 1)
+        return best
+  complexity: O(26 · n) time, O(26) space
+  explain: Tracking a running `maxf` avoids the max() call and makes it O(n); it never needs to decrease because only a larger max can improve the answer.
+
+- id: permutation-in-string
+  title: Permutation in String
+  pattern: sliding-window
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/permutation-in-string/
+  fn: check_inclusion
+  statement: |
+    Return `True` if some permutation of `s1` is a substring of `s2`.
+
+    ```
+    s1 = "ab", s2 = "eidbaooo" -> True   ("ba")
+    s1 = "ab", s2 = "eidboaoo" -> False
+    ```
+  starter: |
+    def check_inclusion(s1, s2):
+        pass
+  tests:
+    - {args: ["ab", "eidbaooo"], expected: true}
+    - {args: ["ab", "eidboaoo"], expected: false}
+    - {args: ["a", "a"], expected: true, hidden: true}
+    - {args: ["abc", "ab"], expected: false, hidden: true}
+    - {args: ["adc", "dcda"], expected: true, hidden: true}
+  hints:
+    - The window has a fixed length len(s1). Compare letter counts as it slides.
+  solution: |
+    def check_inclusion(s1, s2):
+        from collections import Counter
+        n = len(s1)
+        if n > len(s2):
+            return False
+        need = Counter(s1)
+        win = Counter(s2[:n])
+        if win == need:
+            return True
+        for i in range(n, len(s2)):
+            win[s2[i]] += 1
+            out = s2[i - n]
+            win[out] -= 1
+            if win[out] == 0:
+                del win[out]
+            if win == need:
+                return True
+        return False
+  complexity: O(n) time, O(1) space (bounded alphabet)
+  explain: Fixed-size window; deleting zero counts makes Counter equality work.
+
+- id: minimum-window-substring
+  title: Minimum Window Substring
+  pattern: sliding-window
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/minimum-window-substring/
+  fn: min_window
+  statement: |
+    Return the shortest substring of `s` that contains every character of `t` (with multiplicity). If none exists return `""`. The answer is unique.
+
+    ```
+    s = "ADOBECODEBANC", t = "ABC" -> "BANC"
+    ```
+  starter: |
+    def min_window(s, t):
+        pass
+  tests:
+    - {args: ["ADOBECODEBANC", "ABC"], expected: "BANC"}
+    - {args: ["a", "a"], expected: "a"}
+    - {args: ["a", "aa"], expected: ""}
+    - {args: ["aa", "aa"], expected: "aa", hidden: true}
+    - {args: ["cabwefgewcwaefgcf", "cae"], expected: "cwae", hidden: true}
+    - {args: ["bba", "ab"], expected: "ba", hidden: true}
+  hints:
+    - Keep a `missing` counter of how many required characters are still unmatched.
+    - Expand r until missing == 0, then shrink l as far as you can while it stays 0.
+  solution: |
+    def min_window(s, t):
+        from collections import Counter
+        need = Counter(t)
+        missing = len(t)
+        best = (0, float("inf"))
+        l = 0
+        for r, ch in enumerate(s):
+            if need[ch] > 0:
+                missing -= 1
+            need[ch] -= 1
+            if missing == 0:
+                while need[s[l]] < 0:
+                    need[s[l]] += 1
+                    l += 1
+                if r - l < best[1] - best[0]:
+                    best = (l, r)
+                need[s[l]] += 1
+                missing += 1
+                l += 1
+        return "" if best[1] == float("inf") else s[best[0]:best[1] + 1]
+  complexity: O(|s| + |t|) time, O(k) space
+  explain: Counts going negative means "surplus", which is what lets the left pointer shrink safely.

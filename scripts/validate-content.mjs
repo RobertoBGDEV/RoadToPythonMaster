@@ -61,7 +61,7 @@ for (const p of problems) {
   if (!p.tests?.some((t) => !t.hidden)) err(`${p.id}: needs at least one visible test`);
 }
 
-if (errors.length) {
+if (errors.length || process.exitCode) {
   console.error(errors.map((e) => '✗ ' + e).join('\n'));
   process.exit(1);
 }

@@ -1,0 +1,179 @@
+- id: two-pointers
+  track: algo
+  week: 2
+  title: Two Pointers
+  summary: Two indices moving through a sequence turn O(n²) pair searches into O(n).
+  minutes: 8
+  xp: 25
+  requires: [arrays-hashing]
+  sections:
+    - md: |
+        ## When to reach for it
+        - The input is **sorted** (or you can sort it) and you look for a pair/triple with a property.
+        - You compare/mirror the two ends (palindromes, container problems).
+        - You partition or compact an array **in place** (remove duplicates, move zeros).
+
+        Two flavours: **opposite ends** (`l=0, r=n-1`, move inward) and **same direction** (a slow writer and a fast reader).
+
+        The correctness argument is the interview answer: *"if the sum is too big, moving `r` left is the only move that can shrink it, so discarding `r` loses nothing."*
+    - code: |
+        def pair_sum_sorted(nums, target):
+            l, r = 0, len(nums) - 1
+            while l < r:
+                s = nums[l] + nums[r]
+                if s == target:
+                    return [l, r]
+                if s < target:
+                    l += 1          # need a bigger sum
+                else:
+                    r -= 1          # need a smaller sum
+            return []
+
+        print(pair_sum_sorted([1, 3, 4, 6, 9], 10))
+      caption: Opposite-ends pointers on sorted input
+  template: |
+    # opposite ends
+    l, r = 0, len(a) - 1
+    while l < r:
+        if cond_move_left(a[l], a[r]):  l += 1
+        else:                           r -= 1
+
+    # same direction (slow writes, fast reads)
+    w = 0
+    for rd in range(len(a)):
+        if keep(a[rd]):
+            a[w] = a[rd]; w += 1
+  quiz:
+    - q: Why is two-pointers on a sorted array O(n)?
+      options: ["Each pointer only moves one way, at most n steps total", "Sorting is free", "It uses a hash map", "It recurses"]
+      answer: 0
+      why: l only increases and r only decreases, so the loop runs at most n times.
+
+- id: sliding-window
+  track: algo
+  week: 3
+  title: Sliding Window
+  summary: Maintain a window over a contiguous range and update it incrementally instead of recomputing.
+  minutes: 10
+  xp: 30
+  requires: [two-pointers]
+  sections:
+    - md: |
+        ## When to reach for it
+        "Longest/shortest/count of **contiguous** subarray/substring such that …"
+
+        - **Fixed size k:** add the new element, drop the one that left.
+        - **Variable size:** expand `r` always; shrink `l` *while the window is invalid* (for "longest") or *while it is valid* (for "shortest").
+
+        State inside the window (a `Counter`, a running sum, a set) is what makes it O(n): each element enters once and leaves once.
+    - code: |
+        def longest_unique(s):
+            seen = {}
+            l = best = 0
+            for r, ch in enumerate(s):
+                if ch in seen and seen[ch] >= l:
+                    l = seen[ch] + 1      # jump past the duplicate
+                seen[ch] = r
+                best = max(best, r - l + 1)
+            return best
+
+        print(longest_unique("abcabcbb"), longest_unique("bbbb"))
+      caption: Variable window with last-seen index
+  template: |
+    l = 0
+    state = ...                      # Counter / sum / set
+    best = 0
+    for r, x in enumerate(a):
+        add(state, x)
+        while invalid(state):        # shrink until valid again
+            remove(state, a[l]); l += 1
+        best = max(best, r - l + 1)
+  quiz:
+    - q: Why is the variable-window loop O(n) despite the inner while?
+      options: ["The while never runs", "l only moves forward, so total shrink steps ≤ n", "It's actually O(n²)", "Python optimises it"]
+      answer: 1
+      why: Each element is added once by r and removed at most once by l.
+
+- id: stack
+  track: algo
+  week: 3
+  title: Stack & Monotonic Stack
+  summary: LIFO for matching, undo and "next greater element" problems.
+  minutes: 8
+  xp: 25
+  requires: [py-collections]
+  sections:
+    - md: |
+        A Python `list` is your stack: `append` / `pop` are O(1).
+
+        - **Matching / nesting:** parentheses, nested decoding, expression evaluation.
+        - **Monotonic stack:** keep the stack sorted (increasing or decreasing). When a new element violates the order, pop, and *each pop is where you learn an answer* ("next greater", "previous smaller", histogram widths).
+    - code: |
+        def next_greater(nums):
+            res = [-1] * len(nums)
+            st = []                         # indices waiting for a greater value
+            for i, x in enumerate(nums):
+                while st and nums[st[-1]] < x:
+                    res[st.pop()] = x
+                st.append(i)
+            return res
+
+        print(next_greater([2, 1, 2, 4, 3]))
+      caption: Monotonic stack of indices
+  template: |
+    st = []                              # store indices (or (value, index))
+    for i, x in enumerate(a):
+        while st and a[st[-1]] < x:      # flip < for "next smaller"
+            j = st.pop()
+            ans[j] = ...                 # x is j's answer
+        st.append(i)
+  quiz:
+    - q: In a monotonic stack, when do you record an answer?
+      options: ["When pushing", "When popping", "At the end only", "Never"]
+      answer: 1
+      why: An element is popped exactly when the first element that beats it arrives.
+
+- id: binary-search
+  track: algo
+  week: 4
+  title: Binary Search
+  summary: Halve the search space. Works on sorted arrays AND on any monotonic yes/no condition.
+  minutes: 10
+  xp: 30
+  requires: [two-pointers]
+  sections:
+    - md: |
+        Two uses:
+        1. **Classic:** find a value in a sorted array (also rotated arrays: one half is always sorted).
+        2. **Search on the answer:** if "is X feasible?" flips from false to true monotonically, binary-search X. (Koko eating bananas, ship packages, split array.)
+
+        Avoid off-by-one bugs with one fixed template: search for the **first index where `ok(i)` is true**.
+    - code: |
+        def first_true(lo, hi, ok):
+            """smallest x in [lo, hi] with ok(x) True; hi+1 if none"""
+            hi += 1
+            while lo < hi:
+                mid = (lo + hi) // 2      # Python ints don't overflow
+                if ok(mid):
+                    hi = mid
+                else:
+                    lo = mid + 1
+            return lo
+
+        a = [1, 3, 5, 7, 9]
+        print(first_true(0, len(a) - 1, lambda i: a[i] >= 6))   # index of first >= 6
+        import bisect
+        print(bisect.bisect_left(a, 6), bisect.bisect_right(a, 7))
+      caption: One template for every variant (plus the built-in `bisect`)
+  template: |
+    lo, hi = 0, n            # search space [lo, hi)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if ok(mid): hi = mid     # answer is mid or to its left
+        else:       lo = mid + 1
+    return lo                    # first index where ok is True
+  quiz:
+    - q: What's special about "search on the answer"?
+      options: ["Array must be sorted", "The feasibility check is monotonic in the answer", "It needs recursion", "It's O(1)"]
+      answer: 1
+      why: If feasibility flips only once from False to True, binary search finds the boundary without any array.

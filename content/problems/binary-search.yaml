@@ -1,0 +1,210 @@
+- id: binary-search-basic
+  title: Binary Search
+  pattern: binary-search
+  difficulty: easy
+  leetcode: https://leetcode.com/problems/binary-search/
+  fn: search
+  statement: |
+    Given an ascending list `nums` of distinct integers and a `target`, return the index of `target`, or `-1`. Must run in **O(log n)**.
+
+    ```
+    nums = [-1,0,3,5,9,12], target = 9 -> 4
+    ```
+  starter: |
+    def search(nums, target):
+        pass
+  tests:
+    - {args: [[-1, 0, 3, 5, 9, 12], 9], expected: 4}
+    - {args: [[-1, 0, 3, 5, 9, 12], 2], expected: -1}
+    - {args: [[5], 5], expected: 0, hidden: true}
+    - {args: [[5], -5], expected: -1, hidden: true}
+    - {args: [[1, 3, 5, 7, 9, 11], 1], expected: 0, hidden: true}
+    - {args: [[1, 3, 5, 7, 9, 11], 11], expected: 5, hidden: true}
+  hints:
+    - Keep an inclusive range [lo, hi]; compare nums[mid] to target and discard half.
+  solution: |
+    def search(nums, target):
+        lo, hi = 0, len(nums) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[mid] < target:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return -1
+  complexity: O(log n) time, O(1) space
+  explain: Two common conventions, `[lo, hi]` with `<=` and `[lo, hi)` with `<`. Pick one and stay consistent.
+
+- id: search-rotated
+  title: Search in Rotated Sorted Array
+  pattern: binary-search
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/search-in-rotated-sorted-array/
+  fn: search_rotated
+  statement: |
+    An ascending array of distinct values was rotated at an unknown pivot (e.g. `[0,1,2,4,5,6,7]` -> `[4,5,6,7,0,1,2]`). Return the index of `target` or `-1` in **O(log n)**.
+
+    ```
+    [4,5,6,7,0,1,2], target = 0 -> 4
+    ```
+  starter: |
+    def search_rotated(nums, target):
+        pass
+  tests:
+    - {args: [[4, 5, 6, 7, 0, 1, 2], 0], expected: 4}
+    - {args: [[4, 5, 6, 7, 0, 1, 2], 3], expected: -1}
+    - {args: [[1], 0], expected: -1}
+    - {args: [[1], 1], expected: 0, hidden: true}
+    - {args: [[3, 1], 1], expected: 1, hidden: true}
+    - {args: [[5, 1, 3], 5], expected: 0, hidden: true}
+    - {args: [[6, 7, 1, 2, 3, 4, 5], 6], expected: 0, hidden: true}
+  hints:
+    - At every step at least one half [lo..mid] or [mid..hi] is sorted. Decide which, then check whether target lies in it.
+  solution: |
+    def search_rotated(nums, target):
+        lo, hi = 0, len(nums) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            if nums[mid] == target:
+                return mid
+            if nums[lo] <= nums[mid]:            # left half sorted
+                if nums[lo] <= target < nums[mid]:
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            else:                                 # right half sorted
+                if nums[mid] < target <= nums[hi]:
+                    lo = mid + 1
+                else:
+                    hi = mid - 1
+        return -1
+  complexity: O(log n) time, O(1) space
+  explain: Use `<=` in `nums[lo] <= nums[mid]` so a two-element window is handled.
+
+- id: find-min-rotated
+  title: Find Minimum in Rotated Sorted Array
+  pattern: binary-search
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/
+  fn: find_min
+  statement: |
+    A sorted array of **distinct** values was rotated between 1 and n times. Return its minimum in O(log n).
+
+    ```
+    [3,4,5,1,2] -> 1      [4,5,6,7,0,1,2] -> 0     [11,13,15,17] -> 11
+    ```
+  starter: |
+    def find_min(nums):
+        pass
+  tests:
+    - {args: [[3, 4, 5, 1, 2]], expected: 1}
+    - {args: [[4, 5, 6, 7, 0, 1, 2]], expected: 0}
+    - {args: [[11, 13, 15, 17]], expected: 11}
+    - {args: [[2, 1]], expected: 1, hidden: true}
+    - {args: [[5]], expected: 5, hidden: true}
+  hints:
+    - Compare nums[mid] with nums[hi]. Which side must contain the minimum?
+  solution: |
+    def find_min(nums):
+        lo, hi = 0, len(nums) - 1
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if nums[mid] > nums[hi]:
+                lo = mid + 1
+            else:
+                hi = mid
+        return nums[lo]
+  complexity: O(log n) time, O(1) space
+  explain: This is the "first index where ok is true" template, with ok(i) = nums[i] <= nums[-1].
+
+- id: koko-bananas
+  title: Koko Eating Bananas
+  pattern: binary-search
+  difficulty: medium
+  leetcode: https://leetcode.com/problems/koko-eating-bananas/
+  fn: min_eating_speed
+  statement: |
+    There are piles of bananas `piles[i]`. Koko eats at `k` bananas/hour, finishing one pile per hour at most (leftover time in an hour is wasted). She must finish all piles within `h` hours. Return the minimum integer `k`.
+
+    ```
+    piles = [3,6,7,11], h = 8 -> 4
+    ```
+  starter: |
+    def min_eating_speed(piles, h):
+        pass
+  tests:
+    - {args: [[3, 6, 7, 11], 8], expected: 4}
+    - {args: [[30, 11, 23, 4, 20], 5], expected: 30}
+    - {args: [[30, 11, 23, 4, 20], 6], expected: 23}
+    - {args: [[1], 1], expected: 1, hidden: true}
+    - {args: [[1000000000], 2], expected: 500000000, hidden: true}
+  hints:
+    - Given k, you can compute the hours needed. That check is monotonic in k.
+    - Binary search k in [1, max(piles)].
+  solution: |
+    def min_eating_speed(piles, h):
+        lo, hi = 1, max(piles)
+        while lo < hi:
+            k = (lo + hi) // 2
+            hours = sum((p + k - 1) // k for p in piles)
+            if hours <= h:
+                hi = k
+            else:
+                lo = k + 1
+        return lo
+  complexity: O(n log max(piles)) time, O(1) space
+  explain: Search on the answer. Ceiling division without floats is `(p + k - 1) // k` (or `-(-p // k)`).
+
+- id: median-two-sorted
+  title: Median of Two Sorted Arrays
+  pattern: binary-search
+  difficulty: hard
+  leetcode: https://leetcode.com/problems/median-of-two-sorted-arrays/
+  fn: find_median
+  compare: float
+  statement: |
+    Given two sorted lists `a` and `b`, return the median of the combined data in **O(log(min(m, n)))** time.
+
+    ```
+    [1,3], [2]    -> 2.0
+    [1,2], [3,4]  -> 2.5
+    ```
+  starter: |
+    def find_median(a, b):
+        pass
+  tests:
+    - {args: [[1, 3], [2]], expected: 2.0}
+    - {args: [[1, 2], [3, 4]], expected: 2.5}
+    - {args: [[], [1]], expected: 1.0, hidden: true}
+    - {args: [[0, 0], [0, 0]], expected: 0.0, hidden: true}
+    - {args: [[1, 2, 3, 4, 5], [6, 7, 8]], expected: 4.5, hidden: true}
+    - {args: [[2], []], expected: 2.0, hidden: true}
+  hints:
+    - Binary search how many elements to take from the smaller array for the left half.
+    - A partition is correct when maxLeft(a) <= minRight(b) and maxLeft(b) <= minRight(a).
+  solution: |
+    def find_median(a, b):
+        if len(a) > len(b):
+            a, b = b, a
+        m, n = len(a), len(b)
+        half = (m + n + 1) // 2
+        lo, hi = 0, m
+        while lo <= hi:
+            i = (lo + hi) // 2
+            j = half - i
+            al = a[i - 1] if i > 0 else float("-inf")
+            ar = a[i] if i < m else float("inf")
+            bl = b[j - 1] if j > 0 else float("-inf")
+            br = b[j] if j < n else float("inf")
+            if al <= br and bl <= ar:
+                if (m + n) % 2:
+                    return float(max(al, bl))
+                return (max(al, bl) + min(ar, br)) / 2
+            if al > br:
+                hi = i - 1
+            else:
+                lo = i + 1
+  complexity: O(log min(m, n)) time, O(1) space
+  explain: Sentinel infinities remove the edge cases for empty halves.

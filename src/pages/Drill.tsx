@@ -10,7 +10,8 @@ export function DrillPage() {
   const [seed, setSeed] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const q = useMemo(() => {
-    const p = problems[Math.floor(Math.random() * problems.length)];
+    const pool = problems.filter((x) => patterns.some((l) => l.id === x.pattern));
+    const p = pool[Math.floor(Math.random() * pool.length)];
     const wrong = patterns.filter((l) => l.id !== p.pattern).sort(() => Math.random() - 0.5).slice(0, 3);
     const options = [...wrong, patterns.find((l) => l.id === p.pattern)!].filter(Boolean).sort(() => Math.random() - 0.5);
     return { p, options };
