@@ -13,6 +13,7 @@ export interface Section {
   code?: string;
   java?: string;
   caption?: string;
+  static?: boolean; // show read-only (needs threads/processes, unavailable in the browser)
 }
 
 export interface QuizItem {

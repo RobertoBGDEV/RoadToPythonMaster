@@ -1,0 +1,352 @@
+- id: design-solid
+  track: design
+  week: 5
+  title: SOLID, explained with Python
+  summary: "The five principles, what they look like in a dynamically-typed language, and how to talk about them without sounding like a textbook."
+  minutes: 12
+  xp: 30
+  requires: [py-oop]
+  sections:
+    - md: |
+        You know these from Java. What interviewers want is **a concrete before/after**, and the trade-off: *"I'd apply this when X changes often; otherwise it's over-engineering."*
+
+        | Principle | One-liner | Smell it fixes |
+        |---|---|---|
+        | **S**ingle Responsibility | A class has one reason to change | God classes mixing parsing, business rules and I/O |
+        | **O**pen/Closed | Extend behaviour without editing existing code | Growing `if/elif type ==` chains |
+        | **L**iskov Substitution | Subtypes must honour the base contract | `Square(Rectangle)` surprises, overridden methods that raise `NotImplementedError` |
+        | **I**nterface Segregation | Many small interfaces beat one fat one | Implementers stubbing out unused methods |
+        | **D**ependency Inversion | Depend on abstractions; inject dependencies | `new PostgresDb()` buried inside business logic |
+    - code: |
+        # BEFORE: violates S, O and D
+        class ReportBad:
+            def generate(self, rows, fmt):
+                if fmt == "csv":
+                    out = "\n".join(",".join(map(str, r)) for r in rows)
+                elif fmt == "json":
+                    import json; out = json.dumps(rows)
+                with open("/tmp/report.txt", "w") as f:       # hard-wired I/O
+                    f.write(out)
+
+        # AFTER: formatters are pluggable (O), I/O is injected (D), each piece has one job (S)
+        import json
+        from typing import Protocol
+
+        class Formatter(Protocol):
+            def format(self, rows) -> str: ...
+
+        class Csv:
+            def format(self, rows): return "\n".join(",".join(map(str, r)) for r in rows)
+        class Json:
+            def format(self, rows): return json.dumps(rows)
+
+        class Report:
+            def __init__(self, formatter: Formatter, sink):   # depend on abstractions
+                self.formatter, self.sink = formatter, sink
+            def generate(self, rows):
+                self.sink(self.formatter.format(rows))
+
+        out = []
+        Report(Csv(), out.append).generate([[1, 2], [3, 4]])   # a list's append is a fake "sink"; trivially testable
+        Report(Json(), out.append).generate([[1, 2]])
+        print(out)
+      java: |
+        interface Formatter { String format(List<List<Object>> rows); }
+        class Report { Report(Formatter f, Consumer<String> sink) { ... } }   // constructor injection
+      caption: Before/after refactor touching S, O, D
+    - code: |
+        # Liskov: the classic violation
+        class Rectangle:
+            def __init__(self, w, h): self.w, self.h = w, h
+            def set_w(self, w): self.w = w
+            def area(self): return self.w * self.h
+
+        class Square(Rectangle):
+            def set_w(self, w): self.w = self.h = w      # surprises callers that expect h unchanged
+
+        def stretch(r: Rectangle):
+            r.set_w(5)
+            return r.area()                              # a Rectangle user expects w*h with h unchanged
+
+        print(stretch(Rectangle(2, 3)), stretch(Square(2, 3)))   # 15 vs 25
+      caption: "A Liskov violation: subtype changes the contract"
+    - md: |
+        **Python-specific notes**
+        - Duck typing and `Protocol` give you Interface Segregation almost for free: define the *tiny* protocol a function needs.
+        - Passing **functions** (callables) is often the lightest form of Dependency Inversion.
+        - Don't create an `AbstractFactoryProviderImpl`. In Python a module-level function or a dict of callables often suffices.
+  quiz:
+    - q: "Dependency Inversion in practice means…"
+      options: ["Using inheritance more", "High-level code receives its collaborators (injected) rather than constructing concrete ones", "Using global state", "Avoiding interfaces"]
+      answer: 1
+      why: Injection lets you swap or fake dependencies and keeps business logic independent of infrastructure.
+
+- id: design-behavioral
+  track: design
+  week: 6
+  title: "Behavioural patterns: Strategy, Observer, Command, State"
+  summary: "Four patterns that show up constantly in LLD interviews, as small Python code."
+  minutes: 14
+  xp: 35
+  requires: [design-solid]
+  sections:
+    - md: |
+        ### Strategy: swap an algorithm at runtime
+        *Use when:* pricing rules, routing, sorting policy, rate-limit algorithms. In Python a **callable** is a strategy.
+    - code: |
+        from typing import Callable
+
+        Discount = Callable[[float], float]
+        def no_discount(p): return p
+        def black_friday(p): return p * 0.7
+        def loyalty(p): return p - min(p * 0.1, 20)
+
+        class Checkout:
+            def __init__(self, strategy: Discount = no_discount):
+                self.strategy = strategy
+            def total(self, prices):
+                return round(self.strategy(sum(prices)), 2)
+
+        cart = [40.0, 60.0]
+        print(Checkout().total(cart), Checkout(black_friday).total(cart), Checkout(loyalty).total(cart))
+      java: |
+        interface DiscountStrategy { double apply(double price); }
+        // and a class per strategy, or lambdas: new Checkout(p -> p * 0.7)
+      caption: Strategy as plain functions
+    - md: |
+        ### Observer: publish/subscribe inside a process
+        *Use when:* UI events, domain events, cache invalidation, "notify me when price changes".
+    - code: |
+        from collections import defaultdict
+
+        class EventBus:
+            def __init__(self):
+                self._subs = defaultdict(list)
+            def subscribe(self, event, handler):
+                self._subs[event].append(handler)
+                return lambda: self._subs[event].remove(handler)      # returns an unsubscribe function
+            def publish(self, event, payload):
+                for h in list(self._subs[event]):                      # copy: handlers may unsubscribe
+                    h(payload)
+
+        bus, log = EventBus(), []
+        unsub = bus.subscribe("order.placed", lambda o: log.append(f"email {o}"))
+        bus.subscribe("order.placed", lambda o: log.append(f"stock -{o}"))
+        bus.publish("order.placed", "#1")
+        unsub()
+        bus.publish("order.placed", "#2")
+        print(log)
+      caption: A minimal event bus
+    - md: |
+        ### Command: turn an action into an object (undo/redo, queues, audit logs)
+        ### State: behaviour changes with an internal state machine (order status, vending machine, connection)
+    - code: |
+        class Editor:
+            def __init__(self): self.text, self.undo_stack = "", []
+            def execute(self, cmd):
+                cmd.do(self); self.undo_stack.append(cmd)
+            def undo(self):
+                if self.undo_stack: self.undo_stack.pop().undo(self)
+
+        class Append:
+            def __init__(self, s): self.s = s
+            def do(self, ed): ed.text += self.s
+            def undo(self, ed): ed.text = ed.text[:-len(self.s)]
+
+        ed = Editor()
+        ed.execute(Append("hello ")); ed.execute(Append("world"))
+        print(ed.text); ed.undo(); print(repr(ed.text))
+
+        # State: an explicit transition table is easier to reason about than nested ifs
+        from enum import Enum, auto
+        class S(Enum): NEW = auto(); PAID = auto(); SHIPPED = auto(); CANCELLED = auto()
+        ALLOWED = {S.NEW: {S.PAID, S.CANCELLED}, S.PAID: {S.SHIPPED, S.CANCELLED}, S.SHIPPED: set(), S.CANCELLED: set()}
+
+        class Order:
+            def __init__(self): self.state = S.NEW
+            def to(self, new):
+                if new not in ALLOWED[self.state]:
+                    raise ValueError(f"{self.state.name} -> {new.name} not allowed")
+                self.state = new
+
+        o = Order(); o.to(S.PAID); o.to(S.SHIPPED)
+        try:
+            o.to(S.CANCELLED)
+        except ValueError as e:
+            print(e)
+      caption: Command with undo, State as a transition table
+  quiz:
+    - q: Which pattern best models undo/redo?
+      options: ["Strategy", "Command", "Singleton", "Adapter"]
+      answer: 1
+      why: Encapsulating each action as an object that knows how to do and undo itself gives you a history stack.
+    - q: "In Python, a Strategy is often just a…"
+      options: ["Metaclass", "Callable", "Thread", "Decorator factory"]
+      answer: 1
+      why: Functions are first-class, so you can pass the algorithm directly.
+
+- id: design-creational-structural
+  track: design
+  week: 7
+  title: "Creational & structural patterns: Factory, Builder, Singleton, Decorator, Adapter"
+  summary: "What to reach for, what Python already does for you, and when a pattern is over-engineering."
+  minutes: 14
+  xp: 35
+  requires: [design-solid]
+  sections:
+    - code: |
+        # FACTORY: centralise object creation. A dict of constructors is idiomatic.
+        class Email:
+            def send(self, msg): return f"email:{msg}"
+        class Sms:
+            def send(self, msg): return f"sms:{msg}"
+
+        REGISTRY = {"email": Email, "sms": Sms}
+        def make_notifier(kind):
+            try:
+                return REGISTRY[kind]()
+            except KeyError:
+                raise ValueError(f"unknown notifier {kind!r}") from None
+
+        print(make_notifier("sms").send("hi"))
+
+        # BUILDER: many optional parameters -> keyword args / dataclass / fluent API
+        from dataclasses import dataclass, replace
+        @dataclass(frozen=True)
+        class Request:
+            url: str
+            method: str = "GET"
+            headers: tuple = ()
+            timeout: float = 5.0
+
+        base = Request("https://api.example.com")
+        post = replace(base, method="POST", timeout=1.5)         # immutable "builder"
+        print(post)
+      java: |
+        // Java needs the Builder pattern for optional args because it lacks default/keyword arguments.
+        new Request.Builder().url("...").method("POST").timeout(1.5).build();
+      caption: Factory via registry, Builder via keyword args
+    - code: |
+        # SINGLETON: in Python a module IS a singleton. Prefer injecting one shared instance.
+        class Config:
+            _instance = None
+            def __new__(cls):
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+                    cls._instance.values = {}
+                return cls._instance
+
+        a, b = Config(), Config()
+        a.values["x"] = 1
+        print(a is b, b.values)
+      caption: A singleton, and why you usually shouldn't
+    - md: |
+        > **Be ready to argue against Singleton:** it hides dependencies, makes tests share state and breaks under multiple processes. Prefer creating one instance at the composition root and passing it in.
+    - code: |
+        # DECORATOR (the pattern, not the @syntax): add behaviour by wrapping with the same interface
+        class Store:
+            def get(self, k): return f"value-of-{k}"
+
+        class CachingStore:
+            def __init__(self, inner):
+                self.inner, self.cache, self.hits = inner, {}, 0
+            def get(self, k):
+                if k in self.cache:
+                    self.hits += 1
+                    return self.cache[k]
+                self.cache[k] = self.inner.get(k)
+                return self.cache[k]
+
+        class LoggingStore:
+            def __init__(self, inner, log): self.inner, self.log = inner, log
+            def get(self, k):
+                self.log.append(f"get {k}")
+                return self.inner.get(k)
+
+        log = []
+        s = LoggingStore(CachingStore(Store()), log)     # compose wrappers freely
+        s.get("a"); s.get("a")
+        print(log, s.inner.hits)
+
+        # ADAPTER: make a foreign interface look like the one your code expects
+        class LegacyPaymentApi:
+            def make_payment_cents(self, cents, currency_code): return f"paid {cents} {currency_code}"
+
+        class PaymentAdapter:
+            def __init__(self, legacy): self.legacy = legacy
+            def pay(self, amount: float, currency="USD"):
+                return self.legacy.make_payment_cents(round(amount * 100), currency)
+
+        print(PaymentAdapter(LegacyPaymentApi()).pay(12.5))
+      caption: Decorator pattern (wrappers) and Adapter
+  quiz:
+    - q: Which pattern is a poor fit when you want easy unit tests?
+      options: ["Strategy", "Singleton with hidden global state", "Adapter", "Factory"]
+      answer: 1
+      why: Hidden shared state leaks between tests and hides dependencies.
+    - q: The Adapter pattern…
+      options: ["Adds caching", "Translates one interface into the one the client expects", "Creates objects", "Stores history"]
+      answer: 1
+      why: Typical use is wrapping a third-party or legacy API behind your own interface.
+
+- id: lld-method
+  track: design
+  week: 7
+  title: How to run a low-level design interview
+  summary: A repeatable 35-minute structure for "design a parking lot / elevator / rate limiter".
+  minutes: 8
+  xp: 25
+  requires: [design-solid]
+  sections:
+    - md: |
+        ### The structure
+        1. **Clarify requirements (3-5 min).** Functional scope, out-of-scope, scale (single process?), concurrency, time source. Write them down.
+        2. **Core entities and relationships (5 min).** Nouns become classes (`ParkingLot`, `Spot`, `Ticket`). Decide *who owns what*.
+        3. **Public API first (5 min).** Write the method signatures and the example calls. This is your contract.
+        4. **Implement the core flow (15 min).** The happy path, clean and readable. Pick data structures deliberately (dict for O(1) lookup, heap for next-free…) and *say the complexity*.
+        5. **Extensibility (5 min).** "How would a new vehicle type / pricing rule / eviction policy plug in?" This is where Strategy/Factory/Observer enter, **only because the requirement calls for them**.
+        6. **Concurrency and failure (3 min).** Where is shared state? What needs a lock? What if the clock goes backwards?
+
+        ### What gets SWE III signal
+        - You **name trade-offs** unprompted ("LRU via OrderedDict is simple; a manual doubly-linked list gives the same bounds without the library").
+        - **Inject time and randomness** (`now` parameter) so behaviour is deterministic and testable. The practice problems in this app do exactly that.
+        - Keep it **small and correct** before making it general. Over-patterning is a red flag.
+    - code: |
+        # Example: LRU cache skeleton using OrderedDict, with the O(1) invariants stated
+        from collections import OrderedDict
+
+        class LRU:
+            def __init__(self, cap):
+                self.cap, self.d = cap, OrderedDict()
+            def get(self, k):
+                if k not in self.d: return -1
+                self.d.move_to_end(k)           # O(1): mark most recently used
+                return self.d[k]
+            def put(self, k, v):
+                self.d[k] = v
+                self.d.move_to_end(k)
+                if len(self.d) > self.cap:
+                    self.d.popitem(last=False)  # O(1): evict least recently used
+
+        c = LRU(2); c.put(1, 1); c.put(2, 2); c.get(1); c.put(3, 3)
+        print(list(c.d))
+      caption: The LRU skeleton you should be able to write from memory
+  quiz:
+    - q: Why pass `now` / timestamps in as parameters?
+      options: ["It's faster", "Deterministic, testable behaviour with no hidden dependency on the clock", "Python requires it", "It avoids locks"]
+      answer: 1
+      why: Hidden calls to `time.time()` make logic hard to test and reason about. Injecting time is Dependency Inversion applied to the clock.
+
+- id: lld-practice
+  track: design
+  week: 8
+  title: "LLD practice: caches, limiters and small systems"
+  summary: Implement real classes and have them checked against operation sequences, exactly like LeetCode design problems.
+  minutes: 5
+  xp: 20
+  requires: [lld-method]
+  sections:
+    - md: |
+        Each problem below is a **class design** exercise. The checker constructs your class, replays a sequence of operations and compares return values.
+
+        Before coding, write down: the invariants (what must always be true), the data structures and the complexity of each operation. Then code. When it passes, ask: *how would I make this thread-safe? How would I extend it?*

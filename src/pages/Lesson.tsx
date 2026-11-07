@@ -51,7 +51,13 @@ export function LessonPage({ id }: { id: string }) {
       {lesson.sections.map((sec, i) => (
         <div key={i}>
           {sec.md && <Markdown text={sec.md} />}
-          {sec.code && <Runnable code={sec.code} java={sec.java} caption={sec.caption} />}
+          {sec.code && !sec.static && <Runnable code={sec.code} java={sec.java} caption={sec.caption} />}
+          {sec.code && sec.static && (
+            <div className="runnable">
+              {sec.caption && <div className="caption">{sec.caption} · <i>read-only: run it locally (threads and processes aren't available in the browser)</i></div>}
+              <Editor value={sec.code.replace(/\n$/, '')} readOnly />
+            </div>
+          )}
         </div>
       ))}
       {lesson.template && (

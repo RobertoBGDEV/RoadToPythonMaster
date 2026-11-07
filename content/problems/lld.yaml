@@ -1,0 +1,626 @@
+- id: lru-cache
+  title: LRU Cache
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: LRUCache
+  leetcode: https://leetcode.com/problems/lru-cache/
+  statement: |
+    Implement `LRUCache(capacity)` with `get(key)` and `put(key, value)`, both in **O(1)** average time.
+
+    - `get` returns the value, or `-1` if absent, and marks the key most recently used.
+    - `put` inserts or updates, marks it most recently used and, if capacity is exceeded, evicts the **least recently used** key.
+
+    ```
+    c = LRUCache(2); c.put(1,1); c.put(2,2); c.get(1) -> 1
+    c.put(3,3)   # evicts key 2
+    c.get(2) -> -1
+    ```
+  starter: |
+    class LRUCache:
+        def __init__(self, capacity):
+            pass
+
+        def get(self, key):
+            pass
+
+        def put(self, key, value):
+            pass
+  tests:
+    - ops: [LRUCache, put, put, get, put, get, put, get, get, get]
+      args: [[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]
+      expected: [null, null, null, 1, null, -1, null, -1, 3, 4]
+    - ops: [LRUCache, put, get, put, get, get]
+      args: [[1], [2, 1], [2], [3, 2], [2], [3]]
+      expected: [null, null, 1, null, -1, 2]
+    - ops: [LRUCache, put, put, put, put, get, get]
+      args: [[2], [1, 1], [2, 2], [1, 10], [3, 3], [2], [1]]
+      expected: [null, null, null, null, null, -1, 10]
+      hidden: true
+    - ops: [LRUCache, get, put, get]
+      args: [[2], [5], [5, 50], [5]]
+      expected: [null, -1, null, 50]
+      hidden: true
+  hints:
+    - You need O(1) lookup AND O(1) reordering. A hash map plus a doubly linked list does it. In Python, `OrderedDict` is that combination.
+  solution: |
+    from collections import OrderedDict
+
+    class LRUCache:
+        def __init__(self, capacity):
+            self.cap = capacity
+            self.d = OrderedDict()
+
+        def get(self, key):
+            if key not in self.d:
+                return -1
+            self.d.move_to_end(key)
+            return self.d[key]
+
+        def put(self, key, value):
+            self.d[key] = value
+            self.d.move_to_end(key)
+            if len(self.d) > self.cap:
+                self.d.popitem(last=False)
+  complexity: O(1) per operation, O(capacity) space
+  explain: "Also be able to write the manual version (dict key -> node, dummy head/tail, `_remove` and `_add_front` helpers). Interviewers often ask for it without OrderedDict."
+
+- id: lfu-cache
+  title: LFU Cache
+  pattern: lld-practice
+  difficulty: hard
+  kind: design
+  className: LFUCache
+  leetcode: https://leetcode.com/problems/lfu-cache/
+  statement: |
+    Implement `LFUCache(capacity)` with `get(key)` and `put(key, value)` in **O(1)**.
+
+    When full, evict the **least frequently used** key. On a tie, evict the **least recently used** among them. Both `get` and `put` of an existing key count as a use. `get` returns `-1` if absent. A capacity of `0` stores nothing.
+
+    ```
+    c = LFUCache(2); c.put(1,1); c.put(2,2); c.get(1) -> 1
+    c.put(3,3)       # evicts 2 (freq 1)
+    c.get(2) -> -1;  c.get(3) -> 3
+    c.put(4,4)       # keys 1 and 3 both freq 2; evicts LRU of them (1)
+    ```
+  starter: |
+    class LFUCache:
+        def __init__(self, capacity):
+            pass
+
+        def get(self, key):
+            pass
+
+        def put(self, key, value):
+            pass
+  tests:
+    - ops: [LFUCache, put, put, get, put, get, get, put, get, get, get]
+      args: [[2], [1, 1], [2, 2], [1], [3, 3], [2], [3], [4, 4], [1], [3], [4]]
+      expected: [null, null, null, 1, null, -1, 3, null, -1, 3, 4]
+    - ops: [LFUCache, put, get]
+      args: [[0], [0, 0], [0]]
+      expected: [null, null, -1]
+    - ops: [LFUCache, put, put, put, get, get]
+      args: [[2], [1, 1], [2, 2], [1, 10], [1], [2]]
+      expected: [null, null, null, null, 10, 2]
+      hidden: true
+    - ops: [LFUCache, put, put, get, get, put, get, get, get]
+      args: [[2], [2, 1], [3, 2], [3], [2], [4, 3], [2], [3], [4]]
+      expected: [null, null, null, 2, 1, null, 1, -1, 3]
+      hidden: true
+  hints:
+    - Keep key -> (value, freq), and freq -> OrderedDict of keys (insertion order = recency). Track `min_freq`.
+    - When you bump a key's frequency and its old bucket was the min and is now empty, increment `min_freq`.
+  solution: |
+    from collections import defaultdict, OrderedDict
+
+    class LFUCache:
+        def __init__(self, capacity):
+            self.cap = capacity
+            self.kv = {}                              # key -> (value, freq)
+            self.buckets = defaultdict(OrderedDict)   # freq -> keys in LRU order
+            self.min_freq = 0
+
+        def _touch(self, key):
+            value, f = self.kv[key]
+            del self.buckets[f][key]
+            if not self.buckets[f]:
+                del self.buckets[f]
+                if self.min_freq == f:
+                    self.min_freq += 1
+            self.kv[key] = (value, f + 1)
+            self.buckets[f + 1][key] = None
+
+        def get(self, key):
+            if key not in self.kv:
+                return -1
+            self._touch(key)
+            return self.kv[key][0]
+
+        def put(self, key, value):
+            if self.cap == 0:
+                return
+            if key in self.kv:
+                self.kv[key] = (value, self.kv[key][1])
+                self._touch(key)
+                return
+            if len(self.kv) >= self.cap:
+                evict, _ = self.buckets[self.min_freq].popitem(last=False)
+                if not self.buckets[self.min_freq]:
+                    del self.buckets[self.min_freq]
+                del self.kv[evict]
+            self.kv[key] = (value, 1)
+            self.buckets[1][key] = None
+            self.min_freq = 1
+  complexity: O(1) per operation
+  explain: A new key always resets `min_freq` to 1, because after eviction (if any) it is the lowest-frequency entry.
+
+- id: time-based-kv
+  title: Time Based Key-Value Store
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: TimeMap
+  leetcode: https://leetcode.com/problems/time-based-key-value-store/
+  statement: |
+    Implement `TimeMap` with `set(key, value, timestamp)` and `get(key, timestamp)`.
+
+    `get` returns the value set with the **largest timestamp ≤ the requested one**, or `""` if none. Timestamps for a given key are set in strictly increasing order.
+
+    ```
+    set("foo","bar",1); get("foo",1) -> "bar"; get("foo",3) -> "bar"
+    set("foo","bar2",4); get("foo",4) -> "bar2"; get("foo",5) -> "bar2"
+    ```
+  starter: |
+    class TimeMap:
+        def __init__(self):
+            pass
+
+        def set(self, key, value, timestamp):
+            pass
+
+        def get(self, key, timestamp):
+            pass
+  tests:
+    - ops: [TimeMap, set, get, get, set, get, get]
+      args: [[], ["foo", "bar", 1], ["foo", 1], ["foo", 3], ["foo", "bar2", 4], ["foo", 4], ["foo", 5]]
+      expected: [null, null, "bar", "bar", null, "bar2", "bar2"]
+    - ops: [TimeMap, get, set, get]
+      args: [[], ["x", 5], ["x", "v", 10], ["x", 9]]
+      expected: [null, "", null, ""]
+      hidden: true
+    - ops: [TimeMap, set, set, set, get, get, get]
+      args: [[], ["a", "1", 1], ["a", "2", 5], ["a", "3", 9], ["a", 4], ["a", 5], ["a", 100]]
+      expected: [null, null, null, null, "1", "2", "3"]
+      hidden: true
+    - ops: [TimeMap, set, set, get, get]
+      args: [[], ["a", "x", 1], ["b", "y", 2], ["a", 2], ["b", 1]]
+      expected: [null, null, null, "x", ""]
+      hidden: true
+  hints:
+    - Per key, keep a list of (timestamp, value) that is naturally sorted. Binary search it.
+  solution: |
+    from bisect import bisect_right
+    from collections import defaultdict
+
+    class TimeMap:
+        def __init__(self):
+            self.times = defaultdict(list)
+            self.vals = defaultdict(list)
+
+        def set(self, key, value, timestamp):
+            self.times[key].append(timestamp)
+            self.vals[key].append(value)
+
+        def get(self, key, timestamp):
+            ts = self.times.get(key)
+            if not ts:
+                return ""
+            i = bisect_right(ts, timestamp)
+            return self.vals[key][i - 1] if i else ""
+  complexity: O(1) set, O(log n) get
+  explain: Parallel lists let `bisect` work on plain integers (3.10+ also has `bisect(..., key=...)`).
+
+- id: hit-counter
+  title: Hit Counter
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: HitCounter
+  leetcode: https://leetcode.com/problems/design-hit-counter/
+  statement: |
+    Implement `HitCounter` with `hit(timestamp)` (a hit at that second) and `get_hits(timestamp)` returning hits in the past **300 seconds** (the window `(timestamp - 300, timestamp]`). Calls come in non-decreasing timestamp order.
+
+    ```
+    hit(1); hit(2); hit(3); get_hits(4) -> 3
+    hit(300); get_hits(300) -> 4; get_hits(301) -> 3
+    ```
+  starter: |
+    class HitCounter:
+        def __init__(self):
+            pass
+
+        def hit(self, timestamp):
+            pass
+
+        def get_hits(self, timestamp):
+            pass
+  tests:
+    - ops: [HitCounter, hit, hit, hit, get_hits, hit, get_hits, get_hits]
+      args: [[], [1], [2], [3], [4], [300], [300], [301]]
+      expected: [null, null, null, null, 3, null, 4, 3]
+    - ops: [HitCounter, get_hits, hit, get_hits, get_hits]
+      args: [[], [1], [1], [1], [301]]
+      expected: [null, 0, null, 1, 0]
+      hidden: true
+    - ops: [HitCounter, hit, hit, hit, get_hits]
+      args: [[], [5], [5], [5], [304]]
+      expected: [null, null, null, null, 3]
+      hidden: true
+    - ops: [HitCounter, hit, hit, get_hits, get_hits]
+      args: [[], [1], [200], [300], [301]]
+      expected: [null, null, null, 2, 1]
+      hidden: true
+  hints:
+    - A deque of timestamps; pop from the left while they are too old. What if there are millions of hits per second? (Bucket by second.)
+  solution: |
+    from collections import deque
+
+    class HitCounter:
+        def __init__(self):
+            self.q = deque()
+
+        def hit(self, timestamp):
+            self.q.append(timestamp)
+
+        def get_hits(self, timestamp):
+            while self.q and self.q[0] <= timestamp - 300:
+                self.q.popleft()
+            return len(self.q)
+  complexity: O(1) amortised per operation
+  explain: "Follow-up: with huge traffic store (second, count) pairs, or a circular array of 300 buckets, for O(1) space."
+
+- id: token-bucket
+  title: Token Bucket Rate Limiter
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: TokenBucket
+  statement: |
+    Implement a **token bucket** rate limiter: `TokenBucket(capacity, refill_per_sec)` starts **full**. `allow(now)` first refills `(now - last) * refill_per_sec` tokens (never above `capacity`), then if at least one token is available consumes one and returns `True`, else `False`. Timestamps (floats, seconds) are passed in so the class is deterministic.
+
+    ```
+    b = TokenBucket(2, 1)      # 2 tokens, refills 1/sec
+    b.allow(0) -> True; b.allow(0) -> True; b.allow(0) -> False
+    b.allow(1) -> True         # one token refilled
+    ```
+  starter: |
+    class TokenBucket:
+        def __init__(self, capacity, refill_per_sec):
+            pass
+
+        def allow(self, now):
+            pass
+  tests:
+    - ops: [TokenBucket, allow, allow, allow, allow, allow, allow, allow, allow]
+      args: [[2, 1], [0], [0], [0], [1], [1], [3.5], [3.5], [3.5]]
+      expected: [null, true, true, false, true, false, true, true, false]
+    - ops: [TokenBucket, allow, allow, allow]
+      args: [[1, 0.5], [0], [1], [2]]
+      expected: [null, true, false, true]
+    - ops: [TokenBucket, allow, allow, allow, allow]
+      args: [[3, 10], [0], [0], [0], [0]]
+      expected: [null, true, true, true, false]
+      hidden: true
+    - ops: [TokenBucket, allow, allow, allow, allow]
+      args: [[2, 1], [0], [0], [100], [100]]
+      expected: [null, true, true, true, true]
+      hidden: true
+  hints:
+    - Store `tokens` and `last`. Refill lazily on each call. No background thread needed.
+    - Cap the refill at `capacity`.
+  solution: |
+    class TokenBucket:
+        def __init__(self, capacity, refill_per_sec):
+            self.capacity = capacity
+            self.rate = refill_per_sec
+            self.tokens = float(capacity)
+            self.last = None
+
+        def allow(self, now):
+            if self.last is not None:
+                self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.rate)
+            self.last = now
+            if self.tokens >= 1:
+                self.tokens -= 1
+                return True
+            return False
+  complexity: O(1) time and space per key
+  explain: "Follow-ups: per-user buckets in a dict (and evicting idle ones), thread safety (a lock per bucket), distributed version (Redis with a Lua script for atomic refill-and-take). Compare with fixed window (burst at the boundary) and sliding-window log (memory heavy)."
+
+- id: parking-lot
+  title: Parking Lot
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: ParkingLot
+  statement: |
+    Design `ParkingLot(spots)` where `spots` is a list of spot sizes (e.g. `[1, 2, 2, 3]`; 1 = motorcycle, 2 = car, 3 = truck).
+
+    - `park(size)` assigns the **smallest free spot whose size ≥ `size`** (lowest index on ties) and returns its index, or `-1` if none.
+    - `leave(index)` frees that spot.
+    - `free_count()` returns how many spots are free.
+
+    ```
+    lot = ParkingLot([1,2,2,3])
+    lot.park(2) -> 1; lot.park(2) -> 2; lot.park(2) -> 3; lot.park(2) -> -1
+    ```
+  starter: |
+    class ParkingLot:
+        def __init__(self, spots):
+            pass
+
+        def park(self, size):
+            pass
+
+        def leave(self, index):
+            pass
+
+        def free_count(self):
+            pass
+  tests:
+    - ops: [ParkingLot, park, park, park, park, leave, park, free_count]
+      args: [[[1, 2, 2, 3]], [2], [2], [2], [2], [1], [1], []]
+      expected: [null, 1, 2, 3, -1, null, 0, 1]
+    - ops: [ParkingLot, park, park, leave, park, free_count]
+      args: [[[2]], [1], [1], [0], [2], []]
+      expected: [null, 0, -1, null, 0, 0]
+    - ops: [ParkingLot, park, park, park, free_count]
+      args: [[[3, 1, 2]], [1], [1], [3], []]
+      expected: [null, 1, 2, 0, 0]
+      hidden: true
+    - ops: [ParkingLot, park, free_count]
+      args: [[[1, 1]], [3], []]
+      expected: [null, -1, 2]
+      hidden: true
+  hints:
+    - Linear scan is fine for the first version. Then discuss how a heap per size class makes `park` O(log n).
+  solution: |
+    class ParkingLot:
+        def __init__(self, spots):
+            self.sizes = list(spots)
+            self.free = [True] * len(spots)
+
+        def park(self, size):
+            best = -1
+            for i, s in enumerate(self.sizes):
+                if self.free[i] and s >= size and (best == -1 or s < self.sizes[best]):
+                    best = i
+            if best != -1:
+                self.free[best] = False
+            return best
+
+        def leave(self, index):
+            self.free[index] = True
+
+        def free_count(self):
+            return sum(self.free)
+  complexity: O(n) park, O(1) leave
+  explain: "For SWE III depth: per-size min-heaps of free indices (lazy deletion), multiple levels, pricing as a Strategy, a Ticket entity with entry time, and a lock around assignment."
+
+- id: tic-tac-toe
+  title: Tic-Tac-Toe
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: TicTacToe
+  leetcode: https://leetcode.com/problems/design-tic-tac-toe/
+  statement: |
+    Design `TicTacToe(n)` for an `n x n` board with two players. `move(row, col, player)` places a mark (the move is always valid) and returns `0` if nobody has won, otherwise the winning player (`1` or `2`). Make `move` run in **O(1)**.
+
+    ```
+    g = TicTacToe(3); g.move(0,0,1) -> 0; g.move(0,2,2) -> 0; g.move(2,2,1) -> 0 ...
+    ```
+  starter: |
+    class TicTacToe:
+        def __init__(self, n):
+            pass
+
+        def move(self, row, col, player):
+            pass
+  tests:
+    - ops: [TicTacToe, move, move, move, move, move, move, move]
+      args: [[3], [0, 0, 1], [0, 2, 2], [2, 2, 1], [1, 1, 2], [2, 0, 1], [1, 0, 2], [2, 1, 1]]
+      expected: [null, 0, 0, 0, 0, 0, 0, 1]
+    - ops: [TicTacToe, move, move]
+      args: [[2], [0, 0, 1], [1, 1, 1]]
+      expected: [null, 0, 1]
+    - ops: [TicTacToe, move, move, move]
+      args: [[3], [0, 2, 1], [1, 1, 1], [2, 0, 1]]
+      expected: [null, 0, 0, 1]
+      hidden: true
+    - ops: [TicTacToe, move, move]
+      args: [[2], [0, 0, 2], [1, 0, 2]]
+      expected: [null, 0, 2]
+      hidden: true
+  hints:
+    - Don't store the board. Keep a running count per row, per column and for each diagonal, +1 for player 1 and -1 for player 2.
+    - A player wins when any counter reaches +n or -n.
+  solution: |
+    class TicTacToe:
+        def __init__(self, n):
+            self.n = n
+            self.rows = [0] * n
+            self.cols = [0] * n
+            self.diag = 0
+            self.anti = 0
+
+        def move(self, row, col, player):
+            d = 1 if player == 1 else -1
+            self.rows[row] += d
+            self.cols[col] += d
+            if row == col:
+                self.diag += d
+            if row + col == self.n - 1:
+                self.anti += d
+            n = self.n
+            if n in (abs(self.rows[row]), abs(self.cols[col]), abs(self.diag), abs(self.anti)):
+                return player
+            return 0
+  complexity: O(1) per move, O(n) space
+  explain: Replacing the O(n²) board with counters is the whole design insight.
+
+- id: circular-queue
+  title: Circular Queue
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: MyCircularQueue
+  leetcode: https://leetcode.com/problems/design-circular-queue/
+  statement: |
+    Implement a fixed-capacity circular queue `MyCircularQueue(k)` with `en_queue(v)` (returns `True` if added), `de_queue()` (returns `True` if removed), `front()` and `rear()` (return `-1` if empty), `is_empty()` and `is_full()`. All O(1) and **no** use of `collections.deque`/list `pop(0)`.
+
+    ```
+    q = MyCircularQueue(3); q.en_queue(1); q.en_queue(2); q.en_queue(3); q.en_queue(4) -> False
+    q.rear() -> 3; q.is_full() -> True; q.de_queue() -> True; q.en_queue(4) -> True; q.rear() -> 4
+    ```
+  starter: |
+    class MyCircularQueue:
+        def __init__(self, k):
+            pass
+
+        def en_queue(self, value):
+            pass
+
+        def de_queue(self):
+            pass
+
+        def front(self):
+            pass
+
+        def rear(self):
+            pass
+
+        def is_empty(self):
+            pass
+
+        def is_full(self):
+            pass
+  tests:
+    - ops: [MyCircularQueue, en_queue, en_queue, en_queue, en_queue, rear, is_full, de_queue, en_queue, rear]
+      args: [[3], [1], [2], [3], [4], [], [], [], [4], []]
+      expected: [null, true, true, true, false, 3, true, true, true, 4]
+    - ops: [MyCircularQueue, is_empty, front, rear, en_queue, front, de_queue, de_queue]
+      args: [[1], [], [], [], [5], [], [], []]
+      expected: [null, true, -1, -1, true, 5, true, false]
+      hidden: true
+    - ops: [MyCircularQueue, en_queue, en_queue, de_queue, en_queue, front, rear]
+      args: [[2], [1], [2], [], [3], [], []]
+      expected: [null, true, true, true, true, 2, 3]
+      hidden: true
+    - ops: [MyCircularQueue, en_queue, de_queue, en_queue, de_queue, is_empty]
+      args: [[1], [7], [], [8], [], []]
+      expected: [null, true, true, true, true, true]
+      hidden: true
+  hints:
+    - A fixed array, a `head` index and a `size` count. The tail is `(head + size - 1) % k`.
+  solution: |
+    class MyCircularQueue:
+        def __init__(self, k):
+            self.buf = [0] * k
+            self.k = k
+            self.head = 0
+            self.size = 0
+
+        def en_queue(self, value):
+            if self.is_full():
+                return False
+            self.buf[(self.head + self.size) % self.k] = value
+            self.size += 1
+            return True
+
+        def de_queue(self):
+            if self.is_empty():
+                return False
+            self.head = (self.head + 1) % self.k
+            self.size -= 1
+            return True
+
+        def front(self):
+            return -1 if self.is_empty() else self.buf[self.head]
+
+        def rear(self):
+            return -1 if self.is_empty() else self.buf[(self.head + self.size - 1) % self.k]
+
+        def is_empty(self):
+            return self.size == 0
+
+        def is_full(self):
+            return self.size == self.k
+  complexity: O(1) per operation
+  explain: Tracking `size` separately avoids the classic ambiguity between "full" and "empty" when head == tail.
+
+- id: kv-store-ttl
+  title: In-Memory Key-Value Store with TTL
+  pattern: lld-practice
+  difficulty: medium
+  kind: design
+  className: KVStore
+  statement: |
+    Implement `KVStore` with `set(key, value, now, ttl=None)` and `get(key, now)`.
+
+    - A key set with a `ttl` is valid while `now < set_time + ttl` and expired afterwards. `ttl=None` never expires.
+    - `get` returns the value, or `None` if the key is missing or expired.
+    - Setting an existing key overwrites its value **and** its TTL.
+
+    ```
+    s = KVStore(); s.set("a", 1, 0, 10); s.get("a", 5) -> 1; s.get("a", 10) -> None
+    ```
+  starter: |
+    class KVStore:
+        def __init__(self):
+            pass
+
+        def set(self, key, value, now, ttl=None):
+            pass
+
+        def get(self, key, now):
+            pass
+  tests:
+    - ops: [KVStore, set, get, get, set, get, set, get, get]
+      args: [[], ["a", 1, 0, 10], ["a", 5], ["a", 10], ["b", 2, 0, null], ["b", 1000], ["a", 3, 20, 5], ["a", 24], ["a", 25]]
+      expected: [null, null, 1, null, null, 2, null, 3, null]
+    - ops: [KVStore, set, set, get]
+      args: [[], ["c", 1, 0, 5], ["c", 2, 3, null], ["c", 100]]
+      expected: [null, null, null, 2]
+      hidden: true
+    - ops: [KVStore, get, set, get]
+      args: [[], ["zz", 0], ["k", "v", 1, 1], ["k", 1]]
+      expected: [null, null, null, "v"]
+      hidden: true
+    - ops: [KVStore, set, get, get]
+      args: [[], ["k", "v", 1, 1], ["k", 1.5], ["k", 2]]
+      expected: [null, null, "v", null]
+      hidden: true
+  hints:
+    - Store (value, expires_at) per key. Evaluate expiry lazily on `get`.
+    - "Follow-up: to reclaim memory, add a min-heap of (expires_at, key) and purge on each call."
+  solution: |
+    class KVStore:
+        def __init__(self):
+            self.d = {}
+
+        def set(self, key, value, now, ttl=None):
+            self.d[key] = (value, None if ttl is None else now + ttl)
+
+        def get(self, key, now):
+            item = self.d.get(key)
+            if item is None:
+                return None
+            value, exp = item
+            if exp is not None and now >= exp:
+                del self.d[key]
+                return None
+            return value
+  complexity: O(1) per operation
+  explain: Lazy expiry is simple; mention the memory leak for never-read keys and the heap-based sweeper as the fix.

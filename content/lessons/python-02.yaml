@@ -1,0 +1,705 @@
+- id: py-toolkit
+  track: python
+  week: 2
+  title: The LeetCode-in-Python toolkit
+  summary: The 15 built-ins and idioms that turn 30-line Java solutions into 6-line Python ones.
+  minutes: 14
+  xp: 30
+  requires: [py-syntax]
+  sections:
+    - md: |
+        Interviewers notice when you use the language well. This is the list to have in muscle memory.
+    - code: |
+        nums = [5, 2, 9, 1]
+        print(sorted(nums), sorted(nums, reverse=True), nums)        # sorted() copies; list.sort() sorts in place
+        print(min(nums), max(nums), sum(nums), len(nums))
+        print(any(x > 8 for x in nums), all(x > 0 for x in nums))    # short-circuiting generators
+
+        words = ["pear", "fig", "banana", "kiwi"]
+        print(sorted(words, key=len), sorted(words, key=lambda w: (len(w), w)))
+        print(max(words, key=len), min(words, key=len))
+
+        # divmod, abs, pow with modulus, int <-> str <-> bin
+        print(divmod(17, 5), abs(-3), pow(2, 10, 1000), int("ff", 16), bin(10), ord("a"), chr(98))
+
+        # math you will need
+        import math
+        print(math.gcd(12, 18), math.isqrt(99), math.comb(5, 2), math.inf > 10**18, float("-inf"))
+      caption: Built-ins
+      java: |
+        Arrays.sort(arr); Collections.sort(list, Comparator.comparing(String::length));
+        list.stream().anyMatch(x -> x > 8);
+        Math.floorMod(a, b); Integer.MAX_VALUE;   // Python: float("inf"), no overflow
+    - code: |
+        # 2-D grids: build rows independently, iterate neighbours with a direction table
+        R, C = 3, 4
+        grid = [[0] * C for _ in range(R)]
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            r, c = 1 + dr, 1 + dc
+            if 0 <= r < R and 0 <= c < C:
+                grid[r][c] = 1
+        print(grid)
+        print(list(zip(*grid)))              # transpose
+        print([row[:] for row in grid] == grid, [[0] * 3] * 2)   # beware aliasing in the last form
+
+        # chars and strings
+        s = "Hello, World"
+        print(s.isalnum(), "a1".isalnum(), s.lower().count("l"), s.find("World"), s.replace("l", "L", 1))
+        print(list(s[:5]), "".join(reversed("abc")), s.split(", "), " x ".strip())
+        from collections import Counter
+        print(Counter("mississippi").most_common(2))
+      caption: Grids and strings
+    - code: |
+        import bisect, heapq, itertools, functools
+
+        a = [1, 3, 3, 5, 8]
+        print(bisect.bisect_left(a, 3), bisect.bisect_right(a, 3))   # lower/upper bound
+        bisect.insort(a, 4); print(a)
+
+        print(list(itertools.accumulate([1, 2, 3, 4])))              # prefix sums
+        print(list(itertools.pairwise([1, 4, 9])), list(itertools.combinations("abc", 2)))
+        print(list(itertools.product([0, 1], repeat=2)), list(itertools.permutations([1, 2, 3], 2))[:3])
+
+        @functools.cache
+        def fib(n): return n if n < 2 else fib(n - 1) + fib(n - 2)
+        print(fib(80))
+
+        # walrus + chained comparisons + unpacking in calls
+        data = [3, 7, 1]
+        if (n := len(data)) > 2:
+            print("big", n)
+        print(*data, sep=" < ")
+      caption: bisect, itertools, functools
+    - md: |
+        ### Gotchas that cost points
+        - `[[0] * n] * m` aliases the rows. Use a comprehension.
+        - `list.sort()` returns `None`. `x = nums.sort()` is a classic bug.
+        - Dict iteration order is insertion order (guaranteed since 3.7). Sets are **unordered**.
+        - Mutating a list while iterating over it skips elements. Iterate over a copy.
+        - Default recursion limit is 1000. `sys.setrecursionlimit(10**6)` or go iterative.
+        - `int` is unbounded; `float("inf")` is your `Integer.MAX_VALUE`.
+  quiz:
+    - q: "What does `sorted(words, key=len)` do when two words have equal length?"
+      options: ["Raises", "Keeps their original relative order (stable sort)", "Sorts alphabetically", "Random order"]
+      answer: 1
+      why: Python's sort is stable, which is why multi-pass sorts and tuple keys work reliably.
+    - q: "`bisect_left(a, x)` returns…"
+      options: ["The index of x or -1", "The leftmost insertion point keeping a sorted", "The count of x", "A boolean"]
+      answer: 1
+      why: It's the lower bound. Check `a[i] == x` yourself if you need membership.
+
+- id: py-functions
+  track: python
+  week: 2
+  title: Functions, closures and decorators
+  summary: First-class functions, *args/**kwargs, closures, lambda and decorators, which replace a lot of Java boilerplate.
+  minutes: 14
+  xp: 30
+  requires: [py-syntax]
+  sections:
+    - md: |
+        Functions are objects. You can pass them, return them and store them in dicts, so there's no need for Java's functional interfaces.
+    - code: |
+        def greet(name, *, punct="!"):          # keyword-only after *
+            return f"hi {name}{punct}"
+
+        def total(*args, **kwargs):             # variadic positional and keyword
+            return sum(args), dict(kwargs)
+
+        print(greet("ada"), greet("ada", punct="?"), total(1, 2, 3, x=1))
+        opts = {"punct": "."}
+        print(greet(*["bob"], **opts))          # unpack on call
+
+        # functions in data structures replace if/elif chains and Strategy classes
+        ops = {"add": lambda a, b: a + b, "mul": lambda a, b: a * b}
+        print({name: f(3, 4) for name, f in ops.items()})
+      java: |
+        // Java: interface Op { int apply(int a, int b); }  + Map<String, Op>
+        // varargs:  static int sum(int... xs)
+      caption: Arguments and first-class functions
+    - code: |
+        # Closure: the inner function remembers its enclosing variables
+        def counter():
+            n = 0
+            def inc():
+                nonlocal n                    # needed to REBIND an outer variable
+                n += 1
+                return n
+            return inc
+
+        c = counter()
+        print(c(), c(), c())
+
+        # Late-binding gotcha
+        fs = [lambda: i for i in range(3)]
+        print([f() for f in fs])              # [2, 2, 2], not [0, 1, 2]
+        fs = [lambda i=i: i for i in range(3)]  # bind at definition time
+        print([f() for f in fs])
+      caption: Closures and the late-binding trap
+    - code: |
+        import functools, time
+
+        def timed(fn):                         # a decorator is just a function that wraps a function
+            @functools.wraps(fn)               # keeps __name__ / docstring
+            def wrapper(*args, **kwargs):
+                t = time.perf_counter()
+                out = fn(*args, **kwargs)
+                wrapper.last = time.perf_counter() - t
+                return out
+            return wrapper
+
+        def retry(times):                      # decorator WITH arguments: one more level
+            def deco(fn):
+                @functools.wraps(fn)
+                def wrapper(*a, **k):
+                    for attempt in range(times):
+                        try:
+                            return fn(*a, **k)
+                        except ValueError:
+                            if attempt == times - 1:
+                                raise
+                return wrapper
+            return deco
+
+        @timed
+        def square(x): return x * x
+
+        calls = []
+        @retry(3)
+        def flaky():
+            calls.append(1)
+            if len(calls) < 3: raise ValueError("nope")
+            return "ok"
+
+        print(square(9), square.__name__, flaky(), len(calls))
+      java: |
+        // Java equivalent is an annotation + AOP proxy (Spring @Retryable, @Timed)
+        // or a hand-written wrapper class implementing the same interface.
+      caption: Decorators, the Pythonic cross-cutting concern tool
+  quiz:
+    - q: "Why does `[lambda: i for i in range(3)]` return all 2s?"
+      options: ["A bug in Python", "Closures capture the variable, not its value, and i is 2 at call time", "range is lazy", "Lambdas are slow"]
+      answer: 1
+      why: "Late binding. Capture the value with a default argument `lambda i=i: i`."
+    - q: What does `@functools.wraps(fn)` preserve?
+      options: ["Speed", "The wrapped function's name, docstring and metadata", "Arguments", "Return type"]
+      answer: 1
+      why: Without it, every decorated function would report the name `wrapper`, which breaks debugging and introspection.
+
+- id: py-generators
+  track: python
+  week: 3
+  title: Comprehensions, iterators and generators
+  summary: Lazy pipelines, yield, and why a Python dev writes almost no for-loops that fill lists.
+  minutes: 13
+  xp: 30
+  requires: [py-functions]
+  sections:
+    - md: |
+        Java's Streams ≈ Python's comprehensions + generators, but built into the language and lazier.
+    - code: |
+        nums = range(10)
+        print([x * x for x in nums if x % 2 == 0])               # list comprehension
+        print({x % 3 for x in nums}, {x: x * x for x in range(4)})   # set / dict comprehension
+        print([(r, c) for r in range(2) for c in range(2)])      # nested: reads left-to-right like loops
+        print(sum(x * x for x in nums))                           # generator expression: no list built
+
+        # flatten, and transpose
+        mat = [[1, 2], [3, 4]]
+        print([v for row in mat for v in row], [list(col) for col in zip(*mat)])
+      java: |
+        IntStream.range(0, 10).filter(x -> x % 2 == 0).map(x -> x * x).boxed().collect(Collectors.toList());
+      caption: Comprehensions
+    - code: |
+        def fib():                       # generator: pauses at yield, resumes on next()
+            a, b = 0, 1
+            while True:
+                yield a
+                a, b = b, a + b
+
+        g = fib()
+        print([next(g) for _ in range(10)])
+
+        import itertools
+        print(list(itertools.islice(fib(), 5, 10)))      # take a slice of an infinite stream
+
+        def read_in_chunks(items, size):
+            for i in range(0, len(items), size):
+                yield items[i:i + size]
+        print(list(read_in_chunks(list(range(7)), 3)))
+
+        # yield from delegates to another iterable (great for recursive traversal)
+        def inorder(t):
+            if t:
+                yield from inorder(t[0]); yield t[1]; yield from inorder(t[2])
+        print(list(inorder(((None, 1, None), 2, (None, 3, None)))))
+      caption: Generators and yield from
+    - code: |
+        class Countdown:                          # the iterator protocol: __iter__ + __next__
+            def __init__(self, n): self.n = n
+            def __iter__(self): return self
+            def __next__(self):
+                if self.n <= 0: raise StopIteration
+                self.n -= 1
+                return self.n + 1
+
+        print(list(Countdown(3)))
+        it = iter([1, 2, 3])
+        print(next(it), next(it), list(it), list(it))      # iterators are single-use!
+      caption: The iterator protocol, and the single-use gotcha
+  quiz:
+    - q: "What is the main advantage of `sum(x*x for x in big)` over `sum([x*x for x in big])`?"
+      options: ["It is shorter", "No intermediate list: O(1) memory", "It sorts first", "It is parallel"]
+      answer: 1
+      why: Generator expressions produce items lazily, so memory stays constant.
+    - q: What happens if you iterate an exhausted iterator again?
+      options: ["Restarts", "Yields nothing", "Raises", "Loops forever"]
+      answer: 1
+      why: Iterators are one-shot. Re-create it or store the data in a list if you need multiple passes.
+
+- id: py-oop
+  track: python
+  week: 5
+  title: OOP the Pythonic way
+  summary: Classes, dunder methods, dataclasses, properties and protocols. Where Python differs from Java's OOP.
+  minutes: 16
+  xp: 35
+  requires: [py-functions]
+  sections:
+    - md: |
+        | Java | Python |
+        |---|---|
+        | `private` fields | convention `_name` (and `__name` mangling), no enforcement |
+        | getters/setters | plain attributes, upgrade to `@property` when needed |
+        | `interface` | `typing.Protocol` (structural) or `abc.ABC` (nominal) |
+        | `equals/hashCode/toString` | `__eq__`/`__hash__`/`__repr__` or `@dataclass` |
+        | overloading | default args, `*args`, `functools.singledispatch` |
+        | `static` | `@staticmethod` / `@classmethod` / module-level function |
+
+        Idiom: **duck typing**. If it quacks like the interface, it is the interface.
+    - code: |
+        from dataclasses import dataclass, field
+
+        @dataclass(order=True, frozen=True)           # generates __init__, __repr__, __eq__, ordering, __hash__
+        class Version:
+            major: int
+            minor: int = 0
+            tags: tuple = field(default=(), compare=False)
+
+        print(Version(1, 2), Version(1, 2) == Version(1, 2), Version(1, 3) > Version(1, 2))
+        print({Version(1): "a"}[Version(1)])           # frozen => hashable
+      java: |
+        public record Version(int major, int minor) {}      // Java 16+ records are the closest match
+      caption: "@dataclass replaces pages of boilerplate"
+    - code: |
+        class Money:
+            def __init__(self, cents):
+                self._cents = cents
+
+            @property
+            def dollars(self):                  # read-only computed attribute
+                return self._cents / 100
+
+            def __add__(self, other):           # operator overloading
+                return Money(self._cents + other._cents)
+            def __eq__(self, other):
+                return isinstance(other, Money) and self._cents == other._cents
+            def __hash__(self): return hash(self._cents)
+            def __lt__(self, other): return self._cents < other._cents
+            def __repr__(self): return f"Money({self._cents})"
+            def __len__(self): return self._cents
+            def __bool__(self): return self._cents != 0
+
+        a, b = Money(150), Money(275)
+        print(a + b, a < b, sorted([b, a]), a.dollars, bool(Money(0)))
+      caption: Dunder methods make your class behave like a built-in
+    - code: |
+        from abc import ABC, abstractmethod
+        from typing import Protocol
+
+        class Shape(ABC):                        # nominal: must inherit
+            @abstractmethod
+            def area(self) -> float: ...
+
+        class Sq(Shape):
+            def __init__(self, s): self.s = s
+            def area(self): return self.s ** 2
+
+        class HasArea(Protocol):                 # structural: anything with .area() qualifies
+            def area(self) -> float: ...
+
+        class Circle:                            # no inheritance needed
+            def area(self): return 3.14
+
+        def total(shapes: list[HasArea]): return sum(s.area() for s in shapes)
+        print(total([Sq(2), Circle()]))
+
+        try:
+            Shape()
+        except TypeError as e:
+            print("cannot instantiate abstract:", e)
+
+        class A:
+            def hi(self): return "A"
+        class B(A):
+            def hi(self): return "B>" + super().hi()
+        class C(A):
+            def hi(self): return "C>" + super().hi()
+        class D(B, C): pass
+        print(D().hi(), [k.__name__ for k in D.__mro__])      # method resolution order (C3)
+      caption: Protocols vs ABCs, and multiple inheritance (MRO)
+  quiz:
+    - q: Which gives you `__eq__`, `__repr__` and `__init__` for free?
+      options: ["@property", "@dataclass", "@staticmethod", "ABC"]
+      answer: 1
+      why: "`@dataclass` generates them from annotated fields."
+    - q: What does `typing.Protocol` express?
+      options: ["Nominal inheritance", "Structural typing: any class with matching methods fits", "Thread safety", "Immutability"]
+      answer: 1
+      why: It formalises duck typing for static checkers like mypy.
+
+- id: py-errors-typing
+  track: python
+  week: 5
+  title: Exceptions, context managers and type hints
+  summary: "EAFP vs LBYL, `with` blocks, custom exceptions, and typing that scales."
+  minutes: 12
+  xp: 30
+  requires: [py-oop]
+  sections:
+    - code: |
+        class InsufficientFunds(Exception):
+            def __init__(self, need):
+                super().__init__(f"need {need} more")
+                self.need = need
+
+        def withdraw(balance, amt):
+            if amt > balance:
+                raise InsufficientFunds(amt - balance)
+            return balance - amt
+
+        try:
+            withdraw(10, 25)
+        except InsufficientFunds as e:        # catch specific types
+            print("caught:", e, e.need)
+        else:
+            print("no error")                  # runs only if try succeeded
+        finally:
+            print("always runs")
+
+        # EAFP ("easier to ask forgiveness") is idiomatic Python
+        d = {}
+        try:
+            d["x"] += 1
+        except KeyError:
+            d["x"] = 1
+        print(d)
+
+        # chaining preserves the cause
+        try:
+            try:
+                int("abc")
+            except ValueError as e:
+                raise RuntimeError("bad config") from e
+        except RuntimeError as e:
+            print(repr(e), "<-", repr(e.__cause__))
+      java: |
+        // Java has checked exceptions; Python has none. Every exception is unchecked.
+        try { ... } catch (InsufficientFunds e) { ... } finally { ... }
+      caption: Exceptions
+    - code: |
+        from contextlib import contextmanager
+
+        class Resource:                       # a context manager = __enter__/__exit__
+            def __enter__(self):
+                print("open"); return self
+            def __exit__(self, exc_type, exc, tb):
+                print("close", "(with error)" if exc_type else "")
+                return False                   # don't swallow exceptions
+
+        with Resource():
+            print("working")
+
+        @contextmanager                       # generator-based shortcut
+        def timer(label):
+            print("start", label)
+            try:
+                yield
+            finally:
+                print("end", label)
+
+        with timer("job"):
+            print("inside")
+      java: |
+        try (Resource r = new Resource()) { ... }   // try-with-resources / AutoCloseable
+      caption: "`with` is try-with-resources for everything"
+    - code: |
+        from typing import Optional, Callable, TypeVar, Iterable
+        T = TypeVar("T")
+
+        def first(items: Iterable[T], pred: Callable[[T], bool]) -> Optional[T]:
+            for x in items:
+                if pred(x):
+                    return x
+            return None
+
+        def parse(v: int | str | None) -> int:          # PEP 604 union syntax (3.10+)
+            if v is None: return 0
+            return int(v)
+
+        print(first([1, 4, 6], lambda x: x > 3), parse("7"), parse(None))
+        # Hints are NOT enforced at runtime. mypy/pyright check them statically.
+        print(first.__annotations__.keys())
+      caption: Type hints (checked by mypy, ignored at runtime)
+  quiz:
+    - q: Type hints in Python are…
+      options: ["Enforced at runtime", "Ignored by the interpreter and used by external checkers", "Required", "Only for classes"]
+      answer: 1
+      why: They document intent and power IDEs and mypy/pyright, but the runtime doesn't check them.
+    - q: When does the `else` block of try/except run?
+      options: ["When an exception occurs", "When the try block raised nothing", "Always", "Never"]
+      answer: 1
+      why: It's the "success" branch, useful for code that shouldn't be inside the protected region.
+
+- id: py-internals
+  track: python
+  week: 6
+  title: Under the hood (references, mutability, complexity)
+  summary: "What `is` really means, shallow vs deep copy, hashing, the GIL, and the big-O of every built-in."
+  minutes: 15
+  xp: 35
+  requires: [py-collections]
+  sections:
+    - md: |
+        Senior interviews probe *why*, not just *how*. Python variables are **names bound to objects**; assignment never copies.
+    - code: |
+        a = [1, 2, 3]
+        b = a                       # same object
+        b.append(4)
+        print(a, a is b, id(a) == id(b))
+
+        import copy
+        nested = [[1], [2]]
+        shallow, deep = copy.copy(nested), copy.deepcopy(nested)
+        nested[0].append(99)
+        print(shallow, deep)        # shallow shares inner lists, deep doesn't
+
+        # Mutable vs immutable: += behaves differently
+        t = (1, 2); u = t; t += (3,); print(t, u)       # tuple rebinds
+        l = [1]; m = l; l += [2]; print(l, m)           # list mutates in place
+
+        # == vs is; small int caching is an implementation detail: never rely on it
+        x, y = [1], [1]
+        print(x == y, x is y, None is None)
+
+        # hashability: keys must be immutable (or define __hash__)
+        try:
+            {[1, 2]: "no"}
+        except TypeError as e:
+            print(e)
+        print({(1, 2): "yes", frozenset({1}): "also"})
+      caption: References, copies and hashing
+    - code: |
+        import sys
+        print(sys.getsizeof([]), sys.getsizeof([1, 2, 3]))      # lists over-allocate
+
+        # Amortised O(1) append, because capacity grows geometrically
+        sizes = set()
+        l = []
+        for i in range(64):
+            l.append(i); sizes.add(sys.getsizeof(l))
+        print(sorted(sizes))
+
+        # string interning and immutability
+        s = "abc"
+        try:
+            s[0] = "x"
+        except TypeError as e:
+            print(e)
+
+        # dict preserves insertion order; get / setdefault / pop(k, default)
+        d = {"b": 1, "a": 2}
+        print(list(d), d.pop("zz", None))
+      caption: Memory behaviour and amortised growth
+    - md: |
+        ### Complexity cheat sheet (CPython)
+
+        | Operation | list | dict / set | deque |
+        |---|---|---|---|
+        | index / lookup | O(1) | O(1) avg | O(n) middle |
+        | append / add | O(1) amortised | O(1) avg | O(1) |
+        | pop last / pop first | O(1) / **O(n)** | n/a | O(1) / O(1) |
+        | insert / delete middle | O(n) | n/a | O(n) |
+        | `x in c` | **O(n)** | O(1) avg | O(n) |
+        | sort | O(n log n) (Timsort, stable) | n/a | n/a |
+        | slice `a[i:j]` | O(j-i) copy | n/a | n/a |
+
+        ### The GIL
+        CPython has a Global Interpreter Lock: only one thread executes Python bytecode at a time. So **threads don't speed up CPU-bound code** (use `multiprocessing` or native extensions), but they *do* help I/O-bound work because the GIL is released while waiting. Python 3.13 ships an experimental free-threaded build.
+
+        ### Hash collisions and dict internals
+        Dicts are open-addressing hash tables with a compact insertion-ordered entries array. Average O(1), worst case O(n) on pathological collisions. Keys need stable `__hash__` consistent with `__eq__`.
+  quiz:
+    - q: "After `b = a` (a is a list), `b.append(1)` changes…"
+      options: ["Only b", "Both, because they name the same object", "Neither", "Only a"]
+      answer: 1
+      why: Assignment binds another name to the same object.
+    - q: Why don't threads speed up CPU-bound Python code?
+      options: ["Threads are slow to start", "The GIL lets only one thread run bytecode at a time", "Python has no threads", "Lists aren't thread-safe"]
+      answer: 1
+      why: Use multiprocessing, or run the heavy work in C extensions that release the GIL.
+
+- id: py-concurrency
+  track: python
+  week: 8
+  title: Concurrency (threads, processes, asyncio)
+  summary: Which tool for which job, and how Python's model differs from Java's thread pools.
+  minutes: 14
+  xp: 30
+  requires: [py-internals]
+  sections:
+    - md: |
+        | Workload | Use | Java analogue |
+        |---|---|---|
+        | Many network/disk waits | `asyncio` (single thread, cooperative) or `ThreadPoolExecutor` | `CompletableFuture`, virtual threads |
+        | CPU-bound | `ProcessPoolExecutor` / `multiprocessing` | `ForkJoinPool` (but processes, not threads) |
+        | Simple blocking I/O parallelism | `concurrent.futures.ThreadPoolExecutor` | `ExecutorService` |
+
+        `asyncio` is *cooperative*: a coroutine runs until it hits `await`, then others run. One blocking call stalls everything.
+    - code: |
+        import asyncio
+
+        async def fetch(name, delay):
+            await asyncio.sleep(delay)            # stands in for network I/O
+            return f"{name} done"
+
+        async def main():
+            # run concurrently: total time ~ max(delay), not the sum
+            results = await asyncio.gather(fetch("a", 0.02), fetch("b", 0.01), fetch("c", 0.03))
+            print(results)
+
+            sem = asyncio.Semaphore(2)               # limit concurrency
+            async def limited(i):
+                async with sem:
+                    await asyncio.sleep(0.001)
+                    return i * i
+            print(await asyncio.gather(*(limited(i) for i in range(5))))
+
+            try:
+                await asyncio.wait_for(asyncio.sleep(1), timeout=0.01)
+            except asyncio.TimeoutError:
+                print("timed out")
+
+        asyncio.run(main())
+      static: true
+      caption: asyncio basics
+    - code: |
+        from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+        import threading
+
+        def work(n):
+            return n * n
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            print(list(pool.map(work, range(6))))
+            futures = {pool.submit(work, n): n for n in range(3)}
+            for f in as_completed(futures):
+                print(futures[f], "->", f.result())
+
+        # Shared state needs a lock (the GIL does NOT make `count += 1` atomic)
+        count, lock = 0, threading.Lock()
+        def bump():
+            global count
+            for _ in range(1000):
+                with lock:
+                    count += 1
+        ts = [threading.Thread(target=bump) for _ in range(4)]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        print(count)
+
+        import queue
+        q = queue.Queue()                              # thread-safe producer/consumer channel
+        for i in range(3): q.put(i)
+        print([q.get() for _ in range(3)])
+      static: true
+      caption: Thread pools, locks and queues
+  quiz:
+    - q: Best tool for downloading 500 URLs concurrently?
+      options: ["multiprocessing", "asyncio or a thread pool", "A for loop", "recursion"]
+      answer: 1
+      why: Time is spent waiting on I/O, during which the GIL is released.
+    - q: Is `count += 1` thread-safe in CPython?
+      options: ["Yes, because of the GIL", "No, it is read-modify-write and can interleave", "Only for ints", "Only in asyncio"]
+      answer: 1
+      why: The GIL protects the interpreter, not your multi-step operations. Use a Lock.
+
+- id: py-testing
+  track: python
+  week: 9
+  title: Testing, structure and tooling
+  summary: "pytest, fixtures, parametrisation, mocking, plus the modern project layout you'd defend in a design review."
+  minutes: 10
+  xp: 25
+  requires: [py-oop]
+  sections:
+    - md: |
+        ```
+        myapp/
+          pyproject.toml          # deps, tool config (ruff, mypy, pytest)
+          src/myapp/__init__.py
+          src/myapp/service.py
+          tests/test_service.py
+        ```
+        - **pytest** over unittest: plain `assert`, fixtures, parametrisation.
+        - **ruff** (lint + format), **mypy/pyright** (types), **uv/poetry/pip-tools** (dependencies), virtualenvs per project.
+    - code: |
+        # A test file as you'd write it with pytest (here we run assertions manually)
+        import unittest.mock as mock
+
+        def apply_discount(price, pct):
+            if not 0 <= pct <= 100:
+                raise ValueError("pct out of range")
+            return round(price * (1 - pct / 100), 2)
+
+        cases = [(100, 10, 90.0), (19.99, 0, 19.99), (50, 100, 0.0)]
+        for price, pct, expected in cases:           # == @pytest.mark.parametrize
+            assert apply_discount(price, pct) == expected
+
+        try:
+            apply_discount(10, 150)
+        except ValueError:
+            print("raises as expected")             # == pytest.raises(ValueError)
+
+        # Mock an external dependency
+        class Gateway:
+            def charge(self, amount): raise RuntimeError("network")
+        def checkout(gw, amount):
+            return "paid" if gw.charge(amount) else "failed"
+
+        gw = mock.Mock(spec=Gateway)
+        gw.charge.return_value = True
+        print(checkout(gw, 5), gw.charge.call_args)
+        print("all assertions passed")
+      caption: What a pytest suite looks like
+    - md: |
+        ```python
+        import pytest
+
+        @pytest.fixture
+        def repo(tmp_path):
+            return Repo(tmp_path / "db.sqlite")
+
+        @pytest.mark.parametrize("price,pct,expected", [(100, 10, 90.0), (50, 100, 0.0)])
+        def test_discount(price, pct, expected):
+            assert apply_discount(price, pct) == expected
+
+        def test_bad_pct():
+            with pytest.raises(ValueError):
+                apply_discount(10, 150)
+        ```
+        Say these in an interview: *dependency injection makes code testable; mock at the boundary (network, clock, DB), not internals; prefer fakes over deep mock chains.*
+  quiz:
+    - q: Where should you mock?
+      options: ["Everywhere", "At the boundaries (network, DB, clock)", "Never", "Inside private methods"]
+      answer: 1
+      why: Mocking internals couples tests to implementation and makes refactoring painful.
