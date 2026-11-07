@@ -41,7 +41,7 @@ a.card.link:hover { border-color: var(--accent); }
 
 .nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
 .node { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 4px; color: var(--text); position: relative; }
-.node.done { border-color: var(--good); } .node.open { border-color: var(--accent); } .node.locked { opacity: .55; }
+.node.done { border-color: var(--good); } .node.open { border-color: var(--accent); } .node.locked { opacity: .8; border-style: dashed; } .node.locked b { color: #b7c0d1; }
 .node .wk { position: absolute; top: 8px; right: 10px; font-size: .7rem; color: var(--muted); }
 
 .md :first-child { margin-top: 0; } .md pre { background: var(--panel2); padding: 12px; border-radius: 8px; overflow-x: auto; }
@@ -88,3 +88,4 @@ pre.java { background: #1d1a14; border: 1px solid #3d3322; border-radius: 8px; p
 }
 
 .pace { margin: 14px 0; display: grid; gap: 8px; }
+.lesson .tag { margin-left: 10px; }

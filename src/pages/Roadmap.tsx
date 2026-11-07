@@ -1,4 +1,4 @@
-import { lessons, problemsForPattern, trackOrder } from '../lib/content';
+import { lessonById, lessons, problemsForPattern, trackOrder } from '../lib/content';
 import { isUnlocked, week } from '../lib/plan';
 import { useProgress } from '../lib/progress';
 import { TRACKS } from '../lib/types';
@@ -27,6 +27,9 @@ export function Roadmap() {
                     <span className="wk">W{week(l)}</span>
                     <b>{status === 'done' ? '✓ ' : status === 'locked' ? '🔒 ' : ''}{l.title}</b>
                     <span className="muted small">{l.minutes} min{ps.length ? ` · ${solved}/${ps.length} problems` : ''}</span>
+                    {status === 'locked' && (
+                      <span className="muted small">after: {(l.requires ?? []).filter((r) => !s.lessonsDone[r]).map((r) => lessonById.get(r)?.title ?? r).join(', ')}</span>
+                    )}
                   </a>
                 );
               })}
